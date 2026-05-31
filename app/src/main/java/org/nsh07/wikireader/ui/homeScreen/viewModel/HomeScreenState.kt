@@ -15,6 +15,7 @@ import org.nsh07.wikireader.data.WikiLang
 import org.nsh07.wikireader.data.WikiPhoto
 import org.nsh07.wikireader.data.WikiPrefixSearchResult
 import org.nsh07.wikireader.data.WikiSearchResult
+import org.nsh07.wikireader.translation.BilingualSectionTranslation
 
 @Immutable
 data class AppSearchBarState(
@@ -28,7 +29,10 @@ data class HomeScreenState(
     val isLoading: Boolean = false,
     val loadingProgress: Float? = null,
     val showRef: Boolean = false,
-    val ref: AnnotatedString = AnnotatedString("")
+    val ref: AnnotatedString = AnnotatedString(""),
+    val targetTitle: String? = null,
+    val targetLang: String? = null,
+    val translations: Map<Int, BilingualSectionTranslation> = emptyMap()
 )
 
 sealed class HomeSubscreen {

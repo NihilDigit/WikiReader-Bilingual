@@ -13,6 +13,13 @@
 .externalNativeBuild
 .cxx
 local.properties
+/.env
+/.env.*
+!/.env.example
 /.kotlin
 api-reference.json
 .idea
+release-signing.properties
+.signing/
+*.bak
+AGENTS.md.*.bak

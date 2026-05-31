@@ -1,5 +1,29 @@
 <div align="center">
 
+# WikiReader Bilingual
+
+A bilingual reading fork of WikiReader for learning with Wikipedia articles.
+
+</div>
+
+This fork keeps the original WikiReader app structure while adding bilingual article-reading features. The Android package name is `dev.nihildigit.wikireader.bilingual`, so it can be installed beside the upstream app. The project remains GPL-3.0, following the original repository license.
+
+Fork-specific decisions:
+
+- Machine translation applies to Wikipedia content only, not app UI labels or navigation text.
+- Article titles should prefer the target-language Wikipedia title via langlinks, falling back to model translation only when no target title exists.
+- The default OpenAI-compatible translation backend is DeepSeek at `https://api.deepseek.com` with model `deepseek-v4-flash`.
+- Bilingual reading is configured in Settings: enable it, enter an API key, adjust base URL/model/target language, and tune concurrency. The default concurrency is 4 and is clamped to a small local range.
+- The current MVP translates article body sections and skips reference-style sections such as References, Further reading, External links, Notes, and Bibliography to avoid wasting API spend.
+- Release builds are signed and published by CI from tags such as `26.5.0`; local public-release smoke builds use `./scripts/build-local-release.sh 26.5.0`.
+- Upstream sync should keep `upstream = nsh07/WikiReader` and `origin = NihilDigit/WikiReader-Bilingual`; avoid broad package-tree rewrites so rebases stay manageable.
+
+The original upstream README follows.
+
+---
+
+<div align="center">
+
 <img src="app/src/main/ic_launcher-playstore.png" width="128">
 
 # WikiReader

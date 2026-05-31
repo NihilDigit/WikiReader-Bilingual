@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme.typography
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -13,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.Hyphens
@@ -21,7 +23,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.util.fastForEach
 import com.github.tomtung.latex2unicode.LaTeX2Unicode
+import org.nsh07.wikireader.R
 import org.nsh07.wikireader.parser.ReferenceData.infoboxTemplates
+import org.nsh07.wikireader.translation.BilingualSectionTranslation
+import org.nsh07.wikireader.translation.BilingualTranslationStatus
 import kotlin.text.Typography.nbsp
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -145,4 +150,34 @@ fun ParsedBodyText(
             }
         }
     }
+}
+
+@Composable
+fun BilingualTranslationBlock(
+    translation: BilingualSectionTranslation?,
+    targetLang: String?,
+    fontSize: Int,
+    fontFamily: FontFamily,
+    modifier: Modifier = Modifier
+) {
+    if (translation == null || targetLang == null) return
+
+    val text = when (translation.status) {
+        BilingualTranslationStatus.IDLE -> null
+        BilingualTranslationStatus.LOADING -> stringResource(R.string.translationLoading)
+        BilingualTranslationStatus.READY -> translation.text
+        BilingualTranslationStatus.ERROR -> stringResource(R.string.translationUnavailable)
+    } ?: return
+
+    Text(
+        text = text,
+        style = typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontSize = fontSize.sp,
+        fontFamily = fontFamily,
+        lineHeight = (24 * (fontSize / 16.0)).toInt().sp,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 18.dp)
+    )
 }

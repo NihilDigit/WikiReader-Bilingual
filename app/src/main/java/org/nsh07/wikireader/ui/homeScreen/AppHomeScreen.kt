@@ -319,6 +319,9 @@ fun AppHomeScreen(
                         }
                         PageContent(
                             content = entry,
+                            targetTitle = homeScreenState.targetTitle,
+                            targetLang = homeScreenState.targetLang,
+                            translations = homeScreenState.translations,
                             sharedScope = this@SharedTransitionLayout,
                             preferencesState = preferencesState,
                             insets = insets,

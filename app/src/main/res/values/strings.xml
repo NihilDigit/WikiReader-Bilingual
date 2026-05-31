@@ -3,7 +3,7 @@
     <string name="about">About</string>
     <string name="app">App</string>
     <string name="appTagline">Read Wikipedia pages distraction-free</string>
-    <string name="app_name">WikiReader</string>
+    <string name="app_name">WikiReader Bilingual</string>
     <string name="articleDeleted">Article deleted</string>
     <string name="articlesSize">%1$s articles, %2$s languages</string>
     <string name="author">Author</string>
@@ -96,7 +96,17 @@
     <string name="settingSearchHistoryDesc">Save search history</string>
     <string name="settingTheme">Theme</string>
     <string name="settingWikipediaLanguage">Wikipedia language</string>
+    <string name="settingBilingualReading">Bilingual reading</string>
+    <string name="settingBilingualReadingDesc">Translate article content into a second language</string>
+    <string name="settingTranslationApiKey">Translation API key</string>
+    <string name="settingTranslationBaseUrl">Translation base URL</string>
+    <string name="settingTranslationModel">Translation model</string>
+    <string name="settingTranslationTargetLang">Target Wikipedia language</string>
+    <string name="settingTranslationUserId">DeepSeek user_id</string>
+    <string name="settingTranslationMaxConcurrency">Translation concurrency</string>
     <string name="settings">Settings</string>
+    <string name="translationLoading">Translating...</string>
+    <string name="translationUnavailable">Translation unavailable</string>
     <string name="settingsRestored">Default settings restored</string>
     <string name="shareLink">Share link</string>
     <string name="sharePage">Share page</string>

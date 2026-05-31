@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import kotlinx.coroutines.delay
 import org.nsh07.wikireader.data.WikiLang
+import org.nsh07.wikireader.translation.BilingualSectionTranslation
 import org.nsh07.wikireader.ui.homeScreen.viewModel.HomeAction
 import org.nsh07.wikireader.ui.homeScreen.viewModel.HomeSubscreen
 import org.nsh07.wikireader.ui.image.ImageCard
@@ -45,6 +46,9 @@ import org.nsh07.wikireader.ui.theme.isDark
 @Composable
 fun PageContent(
     content: HomeSubscreen.Article,
+    targetTitle: String?,
+    targetLang: String?,
+    translations: Map<Int, BilingualSectionTranslation>,
     sharedScope: SharedTransitionScope,
     preferencesState: PreferencesState,
     insets: PaddingValues,
@@ -135,6 +139,19 @@ fun PageContent(
                                     .padding(start = 16.dp, end = 16.dp, top = 16.dp)
                                     .animateContentSize(motionScheme.defaultSpatialSpec())
                             )
+                            if (!targetTitle.isNullOrBlank() &&
+                                targetTitle != content.title
+                            ) {
+                                Text(
+                                    text = targetTitle,
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = colorScheme.onSurfaceVariant,
+                                    fontFamily = FontFamily.Serif,
+                                    modifier = Modifier
+                                        .padding(start = 16.dp, end = 16.dp, top = 4.dp)
+                                        .fillMaxWidth()
+                                )
+                            }
                             if (photoDesc != null) {
                                 Text(
                                     text = photoDesc,
@@ -192,6 +209,12 @@ fun PageContent(
                             showRef = { onAction(HomeAction.UpdateRef(it)) },
                             pageImageUri = content.photo?.source
                         )
+                        BilingualTranslationBlock(
+                            translation = translations[0],
+                            targetLang = targetLang,
+                            fontSize = fontSize,
+                            fontFamily = fontFamily
+                        )
                     }
             }
             itemsIndexed(
@@ -212,6 +235,8 @@ fun PageContent(
                             dataSaver = preferencesState.dataSaver,
                             renderMath = preferencesState.renderMath,
                             imageBackground = preferencesState.imageBackground,
+                            translation = translations[i + 1],
+                            targetLang = targetLang,
                             onLinkClick = { onAction(HomeAction.LoadPage(it)) },
                             onGalleryImageClick = onGalleryImageClick,
                             showRef = { onAction(HomeAction.UpdateRef(it)) }

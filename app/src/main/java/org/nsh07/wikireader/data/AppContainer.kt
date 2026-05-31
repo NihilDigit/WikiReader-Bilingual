@@ -10,6 +10,8 @@ import okhttp3.OkHttpClient
 import org.nsh07.wikireader.BuildConfig
 import org.nsh07.wikireader.network.HostSelectionInterceptor
 import org.nsh07.wikireader.network.WikipediaApiService
+import org.nsh07.wikireader.translation.OpenAiCompatibleTranslationRepository
+import org.nsh07.wikireader.translation.TranslationRepository
 import org.nsh07.wikireader.ui.settingsScreen.viewModel.PreferencesState
 import retrofit2.Retrofit
 import retrofit2.converter.scalars.ScalarsConverterFactory
@@ -19,6 +21,7 @@ interface AppContainer {
     val preferencesStateMutableFlow: MutableStateFlow<PreferencesState>
     val interceptor: HostSelectionInterceptor
     val wikipediaRepository: WikipediaRepository
+    val translationRepository: TranslationRepository
     val appPreferencesRepository: AppPreferencesRepository
     val appDatabaseRepository: AppDatabaseRepository
     val userAgentString: String
@@ -78,6 +81,10 @@ class DefaultAppContainer(context: Context) : AppContainer {
             wikipediaPageRetrofitService,
             Dispatchers.IO
         )
+    }
+
+    override val translationRepository: TranslationRepository by lazy {
+        OpenAiCompatibleTranslationRepository(Dispatchers.IO)
     }
 
     override val appPreferencesRepository: AppPreferencesRepository by lazy {

@@ -1,0 +1,4 @@
+storeFile=/absolute/path/to/wikireader-bilingual-release.jks
+storePassword=change-me
+keyAlias=wikireader-bilingual-release
+keyPassword=change-me

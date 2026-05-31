@@ -19,6 +19,7 @@ import org.nsh07.wikireader.data.AppDatabaseRepository
 import org.nsh07.wikireader.data.AppStatus
 import org.nsh07.wikireader.data.PreferencesRepository
 import org.nsh07.wikireader.network.HostSelectionInterceptor
+import org.nsh07.wikireader.translation.TranslationConfig
 
 class SettingsViewModel(
     private val appStatusFlow: MutableStateFlow<AppStatus>,
@@ -64,6 +65,42 @@ class SettingsViewModel(
                 ?: appPreferencesRepository.saveBooleanPreference("browsing-history", true)
             val searchHistory = appPreferencesRepository.readBooleanPreference("search-history")
                 ?: appPreferencesRepository.saveBooleanPreference("search-history", true)
+            val bilingualEnabled =
+                appPreferencesRepository.readBooleanPreference("bilingual-enabled")
+                    ?: appPreferencesRepository.saveBooleanPreference("bilingual-enabled", false)
+            val translationApiKey =
+                appPreferencesRepository.readStringPreference("translation-api-key")
+                    ?: appPreferencesRepository.saveStringPreference("translation-api-key", "")
+            val translationBaseUrl =
+                appPreferencesRepository.readStringPreference("translation-base-url")
+                    ?: appPreferencesRepository.saveStringPreference(
+                        "translation-base-url",
+                        TranslationConfig.DEFAULT_BASE_URL
+                    )
+            val translationModel =
+                appPreferencesRepository.readStringPreference("translation-model")
+                    ?: appPreferencesRepository.saveStringPreference(
+                        "translation-model",
+                        TranslationConfig.DEFAULT_MODEL
+                    )
+            val translationTargetLang =
+                appPreferencesRepository.readStringPreference("translation-target-lang")
+                    ?: appPreferencesRepository.saveStringPreference(
+                        "translation-target-lang",
+                        TranslationConfig.DEFAULT_TARGET_LANG
+                    )
+            val translationUserId =
+                appPreferencesRepository.readStringPreference("translation-user-id")
+                    ?: appPreferencesRepository.saveStringPreference(
+                        "translation-user-id",
+                        TranslationConfig.DEFAULT_USER_ID
+                    )
+            val translationMaxConcurrency =
+                appPreferencesRepository.readIntPreference("translation-max-concurrency")
+                    ?: appPreferencesRepository.saveIntPreference(
+                        "translation-max-concurrency",
+                        TranslationConfig.DEFAULT_MAX_CONCURRENCY
+                    )
 
             preferencesStateMutableFlow.update { currentState ->
                 currentState.copy(
@@ -80,7 +117,14 @@ class SettingsViewModel(
                     renderMath = renderMath,
                     searchHistory = searchHistory,
                     browsingHistory = browsingHistory,
-                    theme = theme
+                    theme = theme,
+                    bilingualEnabled = bilingualEnabled,
+                    translationApiKey = translationApiKey,
+                    translationBaseUrl = translationBaseUrl,
+                    translationModel = translationModel,
+                    translationTargetLang = translationTargetLang,
+                    translationUserId = translationUserId,
+                    translationMaxConcurrency = translationMaxConcurrency
                 )
             }
 
@@ -127,11 +171,68 @@ class SettingsViewModel(
                 appPreferencesRepository.saveStringPreference("color-scheme", action.value)
             }
 
+            is SettingsAction.SaveTranslationApiKey -> viewModelScope.launch {
+                preferencesStateMutableFlow.update { currentState ->
+                    currentState.copy(translationApiKey = action.value.trim())
+                }
+                appPreferencesRepository.saveStringPreference("translation-api-key", action.value.trim())
+            }
+
+            is SettingsAction.SaveTranslationBaseUrl -> viewModelScope.launch {
+                preferencesStateMutableFlow.update { currentState ->
+                    currentState.copy(translationBaseUrl = action.value.trim())
+                }
+                appPreferencesRepository.saveStringPreference(
+                    "translation-base-url",
+                    action.value.trim()
+                )
+            }
+
+            is SettingsAction.SaveTranslationModel -> viewModelScope.launch {
+                preferencesStateMutableFlow.update { currentState ->
+                    currentState.copy(translationModel = action.value.trim())
+                }
+                appPreferencesRepository.saveStringPreference("translation-model", action.value.trim())
+            }
+
+            is SettingsAction.SaveTranslationTargetLang -> viewModelScope.launch {
+                preferencesStateMutableFlow.update { currentState ->
+                    currentState.copy(translationTargetLang = action.value.trim())
+                }
+                appPreferencesRepository.saveStringPreference(
+                    "translation-target-lang",
+                    action.value.trim()
+                )
+            }
+
+            is SettingsAction.SaveTranslationUserId -> viewModelScope.launch {
+                val userId = action.value.trim()
+                preferencesStateMutableFlow.update { currentState ->
+                    currentState.copy(translationUserId = userId)
+                }
+                appPreferencesRepository.saveStringPreference("translation-user-id", userId)
+            }
+
+            is SettingsAction.SaveTranslationMaxConcurrency -> viewModelScope.launch {
+                val concurrency = action.value.coerceIn(1, 16)
+                preferencesStateMutableFlow.update { currentState ->
+                    currentState.copy(translationMaxConcurrency = concurrency)
+                }
+                appPreferencesRepository.saveIntPreference("translation-max-concurrency", concurrency)
+            }
+
             is SettingsAction.SaveBlackTheme -> viewModelScope.launch {
                 preferencesStateMutableFlow.update { currentState ->
                     currentState.copy(blackTheme = action.value)
                 }
                 appPreferencesRepository.saveBooleanPreference("black-theme", action.value)
+            }
+
+            is SettingsAction.SaveBilingualEnabled -> viewModelScope.launch {
+                appPreferencesRepository.saveBooleanPreference("bilingual-enabled", action.value)
+                preferencesStateMutableFlow.update { currentState ->
+                    currentState.copy(bilingualEnabled = action.value)
+                }
             }
 
             is SettingsAction.SaveFontSize -> viewModelScope.launch {

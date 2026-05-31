@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
@@ -41,6 +42,7 @@ import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.motionScheme
 import androidx.compose.material3.MaterialTheme.typography
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
@@ -70,6 +72,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -459,6 +463,116 @@ fun SettingsScreen(
                     items = 4,
                     index = 0
                 ) { setShowLanguageSheet(true) }
+            }
+            item {
+                ListItem(
+                    leadingContent = {
+                        Icon(painterResource(R.drawable.translate), contentDescription = null)
+                    },
+                    headlineContent = { Text(stringResource(string.settingBilingualReading)) },
+                    supportingContent = { Text(stringResource(string.settingBilingualReadingDesc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = preferencesState.bilingualEnabled,
+                            onCheckedChange = {
+                                onAction(SettingsAction.SaveBilingualEnabled(it))
+                            },
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        if (preferencesState.bilingualEnabled) R.drawable.check
+                                        else R.drawable.clear
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                )
+                            },
+                            colors = switchColors
+                        )
+                    },
+                    colors = listItemColors,
+                    modifier = Modifier.clip(middleListItemShape)
+                )
+            }
+            if (preferencesState.bilingualEnabled) {
+                item {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(listItemColors.containerColor, bottomListItemShape)
+                            .padding(16.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = preferencesState.translationApiKey,
+                            onValueChange = {
+                                onAction(SettingsAction.SaveTranslationApiKey(it))
+                            },
+                            label = { Text(stringResource(string.settingTranslationApiKey)) },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = preferencesState.translationBaseUrl,
+                            onValueChange = {
+                                onAction(SettingsAction.SaveTranslationBaseUrl(it))
+                            },
+                            label = { Text(stringResource(string.settingTranslationBaseUrl)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = preferencesState.translationModel,
+                            onValueChange = {
+                                onAction(SettingsAction.SaveTranslationModel(it))
+                            },
+                            label = { Text(stringResource(string.settingTranslationModel)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = preferencesState.translationTargetLang,
+                                onValueChange = {
+                                    onAction(SettingsAction.SaveTranslationTargetLang(it))
+                                },
+                                label = {
+                                    Text(stringResource(string.settingTranslationTargetLang))
+                                },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = preferencesState.translationMaxConcurrency.toString(),
+                                onValueChange = {
+                                    it.toIntOrNull()?.let { value ->
+                                        onAction(
+                                            SettingsAction.SaveTranslationMaxConcurrency(value)
+                                        )
+                                    }
+                                },
+                                label = {
+                                    Text(stringResource(string.settingTranslationMaxConcurrency))
+                                },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        OutlinedTextField(
+                            value = preferencesState.translationUserId,
+                            onValueChange = {
+                                onAction(SettingsAction.SaveTranslationUserId(it))
+                            },
+                            label = { Text(stringResource(string.settingTranslationUserId)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
             }
             if (currentLocales != null)
                 item {

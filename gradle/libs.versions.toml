@@ -21,6 +21,7 @@ materialKolor = "3.0.1"
 nav3Core = "1.0.0-alpha11"
 navigationCompose = "2.9.5"
 okhttp = "5.2.0"
+openaiJava = "4.37.0"
 retrofit = "3.0.0"
 retrofit2KotlinxSerializationConverter = "1.0.0"
 room = "2.8.2"
@@ -63,6 +64,7 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 latex2unicode_x-x3 = { module = "com.github.tomtung:latex2unicode_2.13", version.ref = "latex2unicode_xX3" }
 material-kolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+openai-java = { module = "com.openai:openai-java", version.ref = "openaiJava" }
 retrofit2-kotlinx-serialization-converter = { module = "com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter", version.ref = "retrofit2KotlinxSerializationConverter" }
 retrofit2-retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit"}
 retrofit2-converter-scalars = { module = "com.squareup.retrofit2:converter-scalars", version.ref = "retrofit" }

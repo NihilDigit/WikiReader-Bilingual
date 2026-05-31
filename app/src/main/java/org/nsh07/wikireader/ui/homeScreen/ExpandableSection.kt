@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
 import org.nsh07.wikireader.R
+import org.nsh07.wikireader.translation.BilingualSectionTranslation
 import org.nsh07.wikireader.ui.theme.WRShapeDefaults.cardShape
 import org.nsh07.wikireader.ui.theme.WikiReaderTheme
 
@@ -56,6 +57,8 @@ fun ExpandableSection(
     darkTheme: Boolean,
     dataSaver: Boolean,
     imageBackground: Boolean,
+    translation: BilingualSectionTranslation? = null,
+    targetLang: String? = null,
     modifier: Modifier = Modifier,
     onLinkClick: (String) -> Unit,
     onGalleryImageClick: (String, String) -> Unit,
@@ -116,20 +119,28 @@ fun ExpandableSection(
             enter = expandVertically(expandFrom = Alignment.CenterVertically) + fadeIn(),
             exit = shrinkVertically(shrinkTowards = Alignment.CenterVertically) + fadeOut()
         ) {
-            ParsedBodyText(
-                body = body,
-                lang = lang,
-                sharedScope = sharedScope,
-                fontSize = fontSize,
-                fontFamily = fontFamily,
-                renderMath = renderMath,
-                darkTheme = darkTheme,
-                dataSaver = dataSaver,
-                background = imageBackground,
-                onLinkClick = onLinkClick,
-                onGalleryImageClick = onGalleryImageClick,
-                showRef = showRef
-            )
+            androidx.compose.foundation.layout.Column {
+                ParsedBodyText(
+                    body = body,
+                    lang = lang,
+                    sharedScope = sharedScope,
+                    fontSize = fontSize,
+                    fontFamily = fontFamily,
+                    renderMath = renderMath,
+                    darkTheme = darkTheme,
+                    dataSaver = dataSaver,
+                    background = imageBackground,
+                    onLinkClick = onLinkClick,
+                    onGalleryImageClick = onGalleryImageClick,
+                    showRef = showRef
+                )
+                BilingualTranslationBlock(
+                    translation = translation,
+                    targetLang = targetLang,
+                    fontSize = fontSize,
+                    fontFamily = fontFamily
+                )
+            }
         }
     }
 }

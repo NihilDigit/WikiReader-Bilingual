@@ -1,6 +1,59 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
+
+fun versionCodeFromVersionName(versionName: String): Int {
+    val parts = versionName.split(".").mapNotNull { it.toIntOrNull() }
+    if (parts.size >= 3) {
+        return parts[0] * 10_000 + parts[1] * 100 + parts[2]
+    }
+    return 1
+}
+
+val wikiReaderBilingualVersionName =
+    providers.gradleProperty("wikiReaderBilingualVersionName").orNull
+        ?: System.getenv("GITHUB_REF_NAME")?.takeIf { it.matches(Regex("""\d+\.\d+\.\d+""")) }
+        ?: "2.5.5"
+val wikiReaderBilingualVersionCode =
+    providers.gradleProperty("wikiReaderBilingualVersionCode").orNull?.toIntOrNull()
+        ?: versionCodeFromVersionName(wikiReaderBilingualVersionName)
+val localReleaseSigningFile = rootProject.file("release-signing.properties")
+val localReleaseSigning = Properties().apply {
+    if (localReleaseSigningFile.isFile) {
+        localReleaseSigningFile.inputStream().use(::load)
+    }
+}
+
+fun releaseSigningValue(envName: String, propertyName: String): String? =
+    System.getenv(envName)?.takeIf { it.isNotBlank() }
+        ?: localReleaseSigning.getProperty(propertyName)?.takeIf { it.isNotBlank() }
+
+val releaseStoreFile = releaseSigningValue("NIHILDIGIT_RELEASE_STORE_FILE", "storeFile")
+val releaseStorePassword = releaseSigningValue("NIHILDIGIT_RELEASE_STORE_PASSWORD", "storePassword")
+val releaseKeyAlias = releaseSigningValue("NIHILDIGIT_RELEASE_KEY_ALIAS", "keyAlias")
+val releaseKeyPassword = releaseSigningValue("NIHILDIGIT_RELEASE_KEY_PASSWORD", "keyPassword")
+val hasReleaseSigning =
+    !releaseStoreFile.isNullOrBlank() &&
+        !releaseStorePassword.isNullOrBlank() &&
+        !releaseKeyAlias.isNullOrBlank() &&
+        !releaseKeyPassword.isNullOrBlank()
+
+gradle.taskGraph.whenReady {
+    val buildsRelease = allTasks.any { task ->
+        task.name.contains("Release") &&
+            (task.name.startsWith("assemble") ||
+                task.name.startsWith("bundle") ||
+                task.name.startsWith("package") ||
+                task.name.startsWith("install"))
+    }
+    if (buildsRelease && !hasReleaseSigning) {
+        throw GradleException(
+            "Release signing is required. Provide NIHILDIGIT_RELEASE_* environment variables " +
+                "or release-signing.properties with the same keystore used by GitHub Actions."
+        )
+    }
+}
 
 plugins {
     alias(libs.plugins.android.application)
@@ -16,11 +69,11 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "org.nsh07.wikireader"
+        applicationId = "dev.nihildigit.wikireader.bilingual"
         minSdk = 26
         targetSdk = 36
-        versionCode = 53
-        versionName = "2.5.5"
+        versionCode = wikiReaderBilingualVersionCode
+        versionName = wikiReaderBilingualVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -31,10 +84,24 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            if (hasReleaseSigning) {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -104,6 +171,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.material.kolor)
     implementation(libs.okhttp)
+    implementation(libs.openai.java)
     implementation(libs.retrofit2.converter.scalars)
     implementation(libs.retrofit2.kotlinx.serialization.converter)
     implementation(libs.retrofit2.retrofit)

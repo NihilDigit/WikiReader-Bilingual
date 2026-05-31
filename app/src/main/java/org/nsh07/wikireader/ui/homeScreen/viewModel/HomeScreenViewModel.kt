@@ -61,6 +61,10 @@ import org.nsh07.wikireader.parser.buildRefList
 import org.nsh07.wikireader.parser.cleanUpWikitext
 import org.nsh07.wikireader.parser.substringMatchingParen
 import org.nsh07.wikireader.parser.toWikitextAnnotatedString
+import org.nsh07.wikireader.translation.BilingualSectionTranslation
+import org.nsh07.wikireader.translation.BilingualTranslationStatus
+import org.nsh07.wikireader.translation.TranslationConfig
+import org.nsh07.wikireader.translation.TranslationRepository
 import org.nsh07.wikireader.ui.settingsScreen.viewModel.PreferencesState
 import kotlin.math.min
 
@@ -70,6 +74,7 @@ class HomeScreenViewModel(
     private val preferencesStateMutableFlow: MutableStateFlow<PreferencesState>,
     private val interceptor: HostSelectionInterceptor,
     private val wikipediaRepository: WikipediaRepository,
+    private val translationRepository: TranslationRepository,
     private val appPreferencesRepository: AppPreferencesRepository,
     private val appDatabaseRepository: AppDatabaseRepository
 ) : ViewModel() {
@@ -108,6 +113,7 @@ class HomeScreenViewModel(
             if (field.isCancelled) field = Job()
             return field
         }
+    private var translationJob: Job? = null
     private var searchDebounceJob: Job? = null
 
     val appStatus = appStatusFlow
@@ -221,6 +227,7 @@ class HomeScreenViewModel(
 
     private fun stopAll() {
         loaderJob.cancel()
+        translationJob?.cancel()
         fromLink = true
         _homeScreenState.update { it.copy(isLoading = false) }
     }
@@ -292,7 +299,13 @@ class HomeScreenViewModel(
                         setLang = lang
                     }
                     _homeScreenState.update { currentState ->
-                        currentState.copy(isLoading = true, loadingProgress = null)
+                        currentState.copy(
+                            isLoading = true,
+                            loadingProgress = null,
+                            targetTitle = null,
+                            targetLang = null,
+                            translations = emptyMap()
+                        )
                     }
                     if (!random && listStatePair == null && preferencesState.value.searchHistory) {
                         appDatabaseRepository.insertSearchHistory(
@@ -370,6 +383,7 @@ class HomeScreenViewModel(
         replaceBackstackEntry: Boolean = false
     ) {
         loaderJob.cancel()
+        translationJob?.cancel()
         viewModelScope.launch(loaderJob + Dispatchers.IO) {
             var setLang = preferencesState.value.lang
             if (title != null || random) {
@@ -448,31 +462,22 @@ class HomeScreenViewModel(
                         }
                     }
 
-                    if (!replaceBackstackEntry) backStack.add(
-                        HomeSubscreen.Article(
-                            title = apiResponse?.title ?: "Error",
-                            photo = apiResponse?.photo,
-                            photoDesc = apiResponse?.description,
-                            langs = apiResponse?.langs,
-                            currentLang = setLang,
-                            pageId = apiResponse?.pageId,
-                            savedStatus = saved,
-                            extract = parsedExtract,
-                            sections = articleSections
-                        )
+                    val initialArticle = HomeSubscreen.Article(
+                        title = apiResponse?.title ?: "Error",
+                        photo = apiResponse?.photo,
+                        photoDesc = apiResponse?.description,
+                        langs = apiResponse?.langs,
+                        currentLang = setLang,
+                        pageId = apiResponse?.pageId,
+                        savedStatus = saved,
+                        extract = parsedExtract,
+                        sections = articleSections
                     )
-                    else
-                        backStack[backStack.lastIndex] = HomeSubscreen.Article(
-                            title = apiResponse?.title ?: "Error",
-                            photo = apiResponse?.photo,
-                            photoDesc = apiResponse?.description,
-                            langs = apiResponse?.langs,
-                            currentLang = setLang,
-                            pageId = apiResponse?.pageId,
-                            savedStatus = saved,
-                            extract = parsedExtract,
-                            sections = articleSections
-                        )
+
+                    if (!replaceBackstackEntry) backStack.add(initialArticle)
+                    else backStack[backStack.lastIndex] = initialArticle
+
+                    maybeTranslateArticle(article = initialArticle, rawSections = extract)
 
                     // Reset refList
                     refCount = 1
@@ -552,6 +557,100 @@ class HomeScreenViewModel(
                     replaceBackstackEntry = true
                 )
         }
+    }
+
+    private fun translationConfig(): TranslationConfig {
+        val prefs = preferencesState.value
+        return TranslationConfig(
+            enabled = prefs.bilingualEnabled,
+            apiKey = prefs.translationApiKey,
+            baseUrl = prefs.translationBaseUrl,
+            model = prefs.translationModel,
+            targetLang = prefs.translationTargetLang,
+            userId = prefs.translationUserId,
+            maxConcurrency = prefs.translationMaxConcurrency
+        )
+    }
+
+    private fun maybeTranslateArticle(
+        article: HomeSubscreen.Article,
+        rawSections: List<String>
+    ) {
+        val config = translationConfig()
+        val sourceLang = article.currentLang ?: preferencesState.value.lang
+        if (!config.canTranslate || config.targetLang == sourceLang) return
+
+        translationJob?.cancel()
+        translationJob = viewModelScope.launch(Dispatchers.IO) {
+            val targetTitle =
+                article.langs?.firstOrNull { it.lang == config.targetLang }?.title
+                    ?: runCatching {
+                        translationRepository.translateTitle(
+                            title = article.title,
+                            sourceLang = sourceLang,
+                            targetLang = config.targetLang,
+                            config = config
+                        )
+                    }.getOrNull()
+
+            _homeScreenState.update {
+                it.copy(targetTitle = targetTitle, targetLang = config.targetLang)
+            }
+
+            rawSections.forEachIndexed { index, rawSection ->
+                if (!shouldTranslateSection(rawSections, index)) return@forEachIndexed
+
+                _homeScreenState.update {
+                    it.copy(
+                        translations = it.translations + (
+                                index to BilingualSectionTranslation(
+                                    status = BilingualTranslationStatus.LOADING
+                                )
+                                )
+                    )
+                }
+
+                launch {
+                    val result = runCatching {
+                        translationRepository.translateContent(
+                            text = rawSection,
+                            sourceLang = sourceLang,
+                            targetLang = config.targetLang,
+                            config = config
+                        )
+                    }
+
+                    _homeScreenState.update {
+                        val translation =
+                            if (result.isSuccess && result.getOrNull().orEmpty().isNotBlank()) {
+                                BilingualSectionTranslation(
+                                    status = BilingualTranslationStatus.READY,
+                                    text = result.getOrThrow()
+                                )
+                            } else {
+                                BilingualSectionTranslation(
+                                    status = BilingualTranslationStatus.ERROR,
+                                    error = result.exceptionOrNull()?.message ?: "Translation failed"
+                                )
+                            }
+                        it.copy(translations = it.translations + (index to translation))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun shouldTranslateSection(rawSections: List<String>, index: Int): Boolean {
+        if (index % 2 == 1 || rawSections[index].isBlank()) return false
+        val heading = rawSections.getOrNull(index - 1)?.trim()?.lowercase()
+        return heading !in setOf(
+            "references",
+            "further reading",
+            "external links",
+            "bibliography",
+            "notes",
+            "footnotes"
+        )
     }
 
     /**
@@ -1034,6 +1133,7 @@ class HomeScreenViewModel(
                 val preferencesStateMutableFlow = application.container.preferencesStateMutableFlow
                 val interceptor = application.container.interceptor
                 val wikipediaRepository = application.container.wikipediaRepository
+                val translationRepository = application.container.translationRepository
                 val appPreferencesRepository = application.container.appPreferencesRepository
                 val appHistoryRepository = application.container.appDatabaseRepository
                 HomeScreenViewModel(
@@ -1041,6 +1141,7 @@ class HomeScreenViewModel(
                     preferencesStateMutableFlow = preferencesStateMutableFlow,
                     interceptor = interceptor,
                     wikipediaRepository = wikipediaRepository,
+                    translationRepository = translationRepository,
                     appPreferencesRepository = appPreferencesRepository,
                     appDatabaseRepository = appHistoryRepository
                 )
