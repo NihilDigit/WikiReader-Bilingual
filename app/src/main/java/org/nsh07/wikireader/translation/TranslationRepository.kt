@@ -104,6 +104,11 @@ fun translationRateLimitRetryDelayMillis(attempt: Int): Long =
 private fun exponentialBackoffMillis(baseMillis: Long, attempt: Int): Long =
     (baseMillis * 2.0.pow((attempt.coerceAtLeast(1) - 1).toDouble())).toLong()
 
+fun translationOnlyOutputInstruction(targetLang: String): String =
+    "Output only the $targetLang translation itself. " +
+            "Do not include introductions, explanations, confirmations, notes, labels, headings, " +
+            "quotes, Markdown, or phrases such as \"Here is the translation\" or \"以下是根据您的要求\"."
+
 fun vocabularyExplanationSystemPrompt(sourceLang: String, targetLang: String): String =
     "You help a $targetLang learner read Wikipedia content written in $sourceLang. " +
             "Explain what a selected word or short phrase means in this exact sentence. " +
@@ -136,7 +141,8 @@ fun vocabularyExplanationUserPrompt(
 
 fun sentenceTranslationSystemPrompt(sourceLang: String, targetLang: String): String =
     "Translate one Wikipedia sentence from $sourceLang into $targetLang. " +
-            "Use the context only to preserve meaning. Return only the natural translation."
+            "Use the context only to preserve meaning. " +
+            translationOnlyOutputInstruction(targetLang)
 
 fun sentenceTranslationUserPrompt(
     sentence: String,
@@ -151,14 +157,15 @@ fun sentenceTranslationUserPrompt(
     Nearby context:
     "$context"
 
-    Return only the natural $targetLang translation of the sentence.
+    ${translationOnlyOutputInstruction(targetLang)}
     """.trimIndent()
 
 fun articleDescriptionSystemPrompt(sourceLang: String, targetLang: String): String =
     "Translate a short Wikipedia article description from $sourceLang to $targetLang. " +
             "The description is a noun phrase or fragment, not a full sentence. " +
             "Translate it literally and concisely. Do not add a subject, title, verb, " +
-            "explanation, punctuation, or surrounding quotation marks."
+            "explanation, punctuation, or surrounding quotation marks. " +
+            translationOnlyOutputInstruction(targetLang)
 
 fun articleDescriptionUserPrompt(
     title: String,
@@ -173,7 +180,8 @@ fun articleDescriptionUserPrompt(
     Description ($sourceLang):
     "$description"
 
-    Return only the $targetLang translation of the description phrase. Preserve the fragment style.
+    ${translationOnlyOutputInstruction(targetLang)}
+    Preserve the fragment style.
     Do not rewrite it as "$title is ...".
     """.trimIndent()
 
@@ -232,7 +240,8 @@ class OpenAiCompatibleTranslationRepository(
     ): String = translate(
         kind = "content",
         systemPrompt = "Translate Wikipedia article content from $sourceLang to $targetLang. " +
-                "Return only the translated text. Preserve the input line breaks exactly; do not split, merge, or reorder paragraphs. " +
+                translationOnlyOutputInstruction(targetLang) + " " +
+                "Preserve the input line breaks exactly; do not split, merge, or reorder paragraphs. " +
                 "Do not translate app UI labels. " +
                 "Do not include citation markers or reference numbers. Convert wiki markup into readable plain text when needed.",
         text = text.cleanArticleTextForTranslation(),
@@ -311,7 +320,7 @@ class OpenAiCompatibleTranslationRepository(
     ): String = translate(
         kind = "title",
         systemPrompt = "Translate this Wikipedia article title from $sourceLang to $targetLang. " +
-                "Return only the title, with no explanation.",
+                translationOnlyOutputInstruction(targetLang),
         text = title,
         sourceLang = sourceLang,
         targetLang = targetLang,

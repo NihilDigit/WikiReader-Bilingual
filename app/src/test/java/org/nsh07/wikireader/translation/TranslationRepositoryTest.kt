@@ -134,8 +134,9 @@ class TranslationRepositoryTest {
             targetLang = "zh"
         )
 
-        assertTrue(system.contains("Return only the natural translation."))
-        assertTrue(user.contains("Return only the natural zh translation"))
+        assertTrue(system.contains("Output only the zh translation itself."))
+        assertTrue(system.contains("Do not include introductions"))
+        assertTrue(user.contains("Output only the zh translation itself."))
         assertTrue(user.contains("Nearby context:"))
     }
 
@@ -151,8 +152,19 @@ class TranslationRepositoryTest {
 
         assertTrue(system.contains("noun phrase or fragment"))
         assertTrue(system.contains("Do not add a subject"))
+        assertTrue(system.contains("Output only the zh translation itself."))
         assertTrue(user.contains("Article title for context"))
         assertTrue(user.contains("Preserve the fragment style"))
         assertTrue(user.contains("Do not rewrite it as"))
+    }
+
+    @Test
+    fun translationOnlyOutputInstruction_bansProviderPreambles() {
+        val instruction = translationOnlyOutputInstruction("zh")
+
+        assertTrue(instruction.contains("Output only the zh translation itself."))
+        assertTrue(instruction.contains("introductions"))
+        assertTrue(instruction.contains("以下是根据您的要求"))
+        assertTrue(instruction.contains("Here is the translation"))
     }
 }

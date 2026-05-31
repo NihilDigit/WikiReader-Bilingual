@@ -17,12 +17,26 @@ private val skippedArticleNodePrefixes = listOf(
     "{{Картка".lowercase()
 )
 
+private val renderedHatnotePrefixes = listOf(
+    "main article:",
+    "main articles:",
+    "see also:",
+    "further reading:",
+    "further information on ",
+    "not to be confused with ",
+    "for other uses, see ",
+    "this article is about "
+)
+
 fun String.asTranslatableArticleText(): String? {
     val text = trim()
     if (text.isBlank()) return null
 
     val lower = text.lowercase()
     if (skippedArticleNodePrefixes.any { lower.startsWith(it.lowercase()) }) return null
+    if (renderedHatnotePrefixes.any { lower.startsWith(it) }) return null
+    if (lower.startsWith("for ") && lower.contains(", see ")) return null
+    if (lower.contains("\" redirects here; not to be confused with ")) return null
 
     return text
 }

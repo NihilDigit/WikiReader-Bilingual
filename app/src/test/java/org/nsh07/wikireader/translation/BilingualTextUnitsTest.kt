@@ -26,7 +26,17 @@ class BilingualTextUnitsTest {
             "<math display=\"block\">x</math>",
             "{| class=\"wikitable\"",
             "{{Infobox park",
-            "{{Short description|Urban park}}"
+            "{{Short description|Urban park}}",
+            "Main article: Park history",
+            "Main articles: Park history, and Nashville history",
+            "See also: Nashville parks",
+            "Further reading: Park archives",
+            "Further information on Tennessee parks: Nashville",
+            "Not to be confused with Centennial Park.",
+            "For other uses, see Mall.",
+            "For the shopping center, see Mall.",
+            "This article is about the park. For other uses, see Mall.",
+            "\"Foo\" redirects here; not to be confused with Bar."
         )
 
         skipped.forEach {
