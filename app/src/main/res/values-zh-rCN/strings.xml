@@ -7,8 +7,8 @@
     <string name="home">主页</string>
     <string name="dialogDeleteHistoryItem">“%1$s”将不再出现在你的搜索记录里.</string>
     <string name="app">应用</string>
-    <string name="appTagline">助你专心阅读维基百科</string>
-    <string name="app_name">WikiReader</string>
+    <string name="appTagline">双语阅读维基百科条目</string>
+    <string name="app_name">WikiReader Bilingual</string>
     <string name="author">作者</string>
     <string name="back">返回</string>
     <string name="cancel">取消</string>
@@ -33,6 +33,7 @@
     <string name="deleteAllArticlesDesc">所有条目将从你的设备中永久删除</string>
     <string name="downloadArticle">下载条目</string>
     <string name="fontStyleSerif">Serif</string>
+    <string name="forkAuthorDesc">WikiReader Bilingual fork</string>
     <string name="history">历史</string>
     <string name="image">图片</string>
     <string name="imageCounter">第%1$s张图片，共%2$s张</string>
@@ -44,6 +45,7 @@
     <string name="ok">好的</string>
     <string name="onThisDay">历史上的今天</string>
     <string name="openInBrowser">在浏览器中打开</string>
+    <string name="originalAuthorDesc">原版 WikiReader 作者</string>
     <string name="otherProjectsDesc">来看看我的其他作品</string>
     <string name="picOfTheDay">今日一图</string>
     <string name="randomArticle">试试手气（随机条目）</string>
@@ -120,7 +122,27 @@
     <string name="settingRenderMathDesc">会少量增加流量消耗. 关闭此项功能可以提升性能，但是会牺牲可读性.</string>
     <string name="settingDataSaver">省流量模式</string>
     <string name="donate">捐赠</string>
-    <string name="supportMyWork">支持我</string>
+    <string name="supportMyWork">支持上游作者</string>
     <string name="settingAppLanguage">应用语言</string>
     <string name="chooseAppLanguage">选择应用语言</string>
+    <string name="settingBilingualReading">双语阅读</string>
+    <string name="settingBilingualReadingDesc">将条目内容翻译为第二语言</string>
+    <string name="settingBilingualBlurBlocks">点击后显示段落译文</string>
+    <string name="settingBilingualBlurBlocksDesc">默认模糊段落译文，点按译文区域后显示</string>
+    <string name="settingBilingualAutoTranslateBlocks">自动翻译正文段落</string>
+    <string name="settingBilingualAutoTranslateBlocksDesc">关闭后显示占位，需要点按按钮才翻译正文段落</string>
+    <string name="settingTranslationDeepSeekApiKey">DeepSeek API Key</string>
+    <string name="settingTranslationTargetLang">目标维基百科语言</string>
+    <string name="settingTranslationMaxConcurrency">翻译并发数</string>
+    <string name="settingTranslationMaxConcurrencyValue">翻译并发数：%1$d</string>
+    <string name="settingTranslationTest">测试翻译</string>
+    <string name="settingTranslationTestRunning">正在测试翻译…</string>
+    <string name="translationLoading">正在翻译…</string>
+    <string name="translationUnavailable">翻译不可用</string>
+    <string name="translationReadyToStart">准备翻译</string>
+    <string name="retry">重试</string>
+    <string name="explainWord">解释“%1$s”</string>
+    <string name="wordExplanation">词义</string>
+    <string name="sentenceTranslation">句子</string>
+    <string name="close">关闭</string>
 </resources>

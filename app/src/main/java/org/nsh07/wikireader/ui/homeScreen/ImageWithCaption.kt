@@ -17,11 +17,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import org.nsh07.wikireader.parser.toWikitextAnnotatedString
+import org.nsh07.wikireader.translation.BilingualSectionTranslation
+import org.nsh07.wikireader.translation.BilingualTextKey
 import org.nsh07.wikireader.ui.image.FeedImage
 import org.nsh07.wikireader.ui.theme.ColorConstants.colorMatrixInvert
 
@@ -39,6 +42,11 @@ fun SharedTransitionScope.ImageWithCaption(
     modifier: Modifier = Modifier,
     pageImageUri: String? = null,
     showCaption: Boolean = true,
+    captionTranslation: BilingualSectionTranslation? = null,
+    targetLang: String? = null,
+    fontFamily: FontFamily = FontFamily.Serif,
+    onRetryTranslation: (BilingualTextKey) -> Unit = {},
+    captionTranslationKey: BilingualTextKey? = null,
     shape: CornerBasedShape = shapes.large
 ) {
     val uriLow = remember(text) {
@@ -76,7 +84,7 @@ fun SharedTransitionScope.ImageWithCaption(
                 .widthIn(max = 512.dp)
                 .clickable(onClick = { onClick(uriHigh, description) })
         )
-        if (showCaption)
+        if (showCaption) {
             Text(
                 description.toWikitextAnnotatedString(
                     colorScheme = colorScheme,
@@ -97,5 +105,17 @@ fun SharedTransitionScope.ImageWithCaption(
                     .padding(horizontal = 16.dp)
                     .padding(vertical = 8.dp)
             )
+            if (captionTranslationKey != null) {
+                PlainBilingualTranslationText(
+                    translation = captionTranslation,
+                    targetLang = targetLang,
+                    fontSize = fontSize - 2,
+                    fontFamily = fontFamily,
+                    onRetry = { onRetryTranslation(captionTranslationKey) },
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+        }
     }
 }

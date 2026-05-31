@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
@@ -48,6 +47,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
@@ -72,7 +72,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -219,6 +218,15 @@ fun SettingsScreen(
     val fontSizeAnimated by animateFloatAsState(
         fontSizeFloat,
         animationSpec = if (animateFontSize) motionScheme.defaultSpatialSpec()
+        else tween(durationMillis = 0)
+    )
+    var animateTranslationConcurrency by remember { mutableStateOf(true) }
+    var translationConcurrencyFloat by remember(preferencesState.translationMaxConcurrency) {
+        mutableFloatStateOf(preferencesState.translationMaxConcurrency.toFloat())
+    }
+    val translationConcurrencyAnimated by animateFloatAsState(
+        translationConcurrencyFloat,
+        animationSpec = if (animateTranslationConcurrency) motionScheme.defaultSpatialSpec()
         else tween(durationMillis = 0)
     )
 
@@ -503,74 +511,103 @@ fun SettingsScreen(
                             .background(listItemColors.containerColor, bottomListItemShape)
                             .padding(16.dp)
                     ) {
+                        Text(
+                            text = stringResource(string.settingBilingualReading),
+                            style = typography.titleSmall,
+                            color = colorScheme.onSurfaceVariant
+                        )
                         OutlinedTextField(
-                            value = preferencesState.translationApiKey,
+                            value = preferencesState.translationDeepSeekApiKey,
                             onValueChange = {
-                                onAction(SettingsAction.SaveTranslationApiKey(it))
+                                onAction(SettingsAction.SaveTranslationDeepSeekApiKey(it))
                             },
-                            label = { Text(stringResource(string.settingTranslationApiKey)) },
+                            label = {
+                                Text(stringResource(string.settingTranslationDeepSeekApiKey))
+                            },
                             singleLine = true,
                             visualTransformation = PasswordVisualTransformation(),
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
-                            value = preferencesState.translationBaseUrl,
+                            value = preferencesState.translationTargetLang,
                             onValueChange = {
-                                onAction(SettingsAction.SaveTranslationBaseUrl(it))
+                                onAction(SettingsAction.SaveTranslationTargetLang(it))
                             },
-                            label = { Text(stringResource(string.settingTranslationBaseUrl)) },
+                            label = {
+                                Text(stringResource(string.settingTranslationTargetLang))
+                            },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
-                        OutlinedTextField(
-                            value = preferencesState.translationModel,
-                            onValueChange = {
-                                onAction(SettingsAction.SaveTranslationModel(it))
+                        BilingualOptionRow(
+                            title = stringResource(string.settingBilingualBlurBlocks),
+                            description = stringResource(string.settingBilingualBlurBlocksDesc),
+                            checked = preferencesState.bilingualBlurBlocks,
+                            onCheckedChange = {
+                                onAction(SettingsAction.SaveBilingualBlurBlocks(it))
                             },
-                            label = { Text(stringResource(string.settingTranslationModel)) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
+                            switchColors = switchColors
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = preferencesState.translationTargetLang,
-                                onValueChange = {
-                                    onAction(SettingsAction.SaveTranslationTargetLang(it))
-                                },
-                                label = {
-                                    Text(stringResource(string.settingTranslationTargetLang))
-                                },
-                                singleLine = true,
-                                modifier = Modifier.weight(1f)
-                            )
-                            OutlinedTextField(
-                                value = preferencesState.translationMaxConcurrency.toString(),
-                                onValueChange = {
-                                    it.toIntOrNull()?.let { value ->
-                                        onAction(
-                                            SettingsAction.SaveTranslationMaxConcurrency(value)
-                                        )
-                                    }
-                                },
-                                label = {
-                                    Text(stringResource(string.settingTranslationMaxConcurrency))
-                                },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Number
+                        BilingualOptionRow(
+                            title = stringResource(string.settingBilingualAutoTranslateBlocks),
+                            description = stringResource(
+                                string.settingBilingualAutoTranslateBlocksDesc
+                            ),
+                            checked = preferencesState.bilingualAutoTranslateBlocks,
+                            onCheckedChange = {
+                                onAction(SettingsAction.SaveBilingualAutoTranslateBlocks(it))
+                            },
+                            switchColors = switchColors
+                        )
+                        Column {
+                            val concurrency = round(translationConcurrencyFloat).toInt()
+                            Text(
+                                text = stringResource(
+                                    string.settingTranslationMaxConcurrencyValue,
+                                    concurrency
                                 ),
-                                modifier = Modifier.weight(1f)
+                                style = typography.bodyMedium,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                            Slider(
+                                value = translationConcurrencyAnimated,
+                                onValueChange = {
+                                    animateTranslationConcurrency = false
+                                    if (round(it).toInt() != concurrency)
+                                        haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                    translationConcurrencyFloat = it
+                                },
+                                valueRange = 1f..16f,
+                                steps = 14,
+                                onValueChangeFinished = {
+                                    animateTranslationConcurrency = true
+                                    val value = round(translationConcurrencyFloat).toInt()
+                                    onAction(SettingsAction.SaveTranslationMaxConcurrency(value))
+                                    translationConcurrencyFloat = value.toFloat()
+                                }
                             )
                         }
-                        OutlinedTextField(
-                            value = preferencesState.translationUserId,
-                            onValueChange = {
-                                onAction(SettingsAction.SaveTranslationUserId(it))
-                            },
-                            label = { Text(stringResource(string.settingTranslationUserId)) },
-                            singleLine = true,
+                        Button(
+                            onClick = { onAction(SettingsAction.TestTranslationProvider) },
+                            enabled = !preferencesState.translationTestInProgress,
                             modifier = Modifier.fillMaxWidth()
-                        )
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (preferencesState.translationTestInProgress)
+                                        string.settingTranslationTestRunning
+                                    else string.settingTranslationTest
+                                )
+                            )
+                        }
+                        preferencesState.translationTestMessage?.let {
+                            Text(
+                                text = it,
+                                style = typography.bodyMedium,
+                                color = colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -795,6 +832,42 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun BilingualOptionRow(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    switchColors: SwitchColors
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = title,
+                style = typography.bodyLarge,
+                color = colorScheme.onSurface
+            )
+            Text(
+                text = description,
+                style = typography.bodySmall,
+                color = colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = switchColors
+        )
     }
 }
 

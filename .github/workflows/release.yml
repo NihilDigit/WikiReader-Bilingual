@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release:
-    name: Build release APK
+    name: Build release APKs
     runs-on: ubuntu-latest
 
     steps:
@@ -54,10 +54,13 @@ jobs:
         env:
           NIHILDIGIT_RELEASE_KEYSTORE_BASE64: ${{ secrets.NIHILDIGIT_RELEASE_KEYSTORE_BASE64 }}
 
+      - name: Build debug APK
+        run: ./gradlew assembleDebug
+
       - name: Test Android app
         run: ./gradlew testDebugUnitTest
 
-      - name: Build signed release APK
+      - name: Build signed release APKs
         run: ./gradlew assembleRelease
         env:
           NIHILDIGIT_RELEASE_STORE_FILE: ${{ runner.temp }}/wikireader-bilingual-signing/wikireader-bilingual-release.jks
@@ -70,7 +73,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-artifacts
-          cp app/build/outputs/apk/release/app-release.apk "release-artifacts/wikireader-bilingual-${GITHUB_REF_NAME}.apk"
+          for apk in app/build/outputs/apk/release/*-release.apk; do
+            abi="$(basename "$apk" -release.apk)"
+            abi="${abi#app-}"
+            cp "$apk" "release-artifacts/wikireader-bilingual-${GITHUB_REF_NAME}-${abi}.apk"
+          done
           (
             cd release-artifacts
             sha256sum *.apk > SHA256SUMS.txt

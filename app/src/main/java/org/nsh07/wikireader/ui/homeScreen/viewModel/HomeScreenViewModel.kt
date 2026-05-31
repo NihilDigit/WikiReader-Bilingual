@@ -62,9 +62,20 @@ import org.nsh07.wikireader.parser.cleanUpWikitext
 import org.nsh07.wikireader.parser.substringMatchingParen
 import org.nsh07.wikireader.parser.toWikitextAnnotatedString
 import org.nsh07.wikireader.translation.BilingualSectionTranslation
+import org.nsh07.wikireader.translation.BilingualTextKey
+import org.nsh07.wikireader.translation.BilingualTextKeys
 import org.nsh07.wikireader.translation.BilingualTranslationStatus
+import org.nsh07.wikireader.translation.ARTICLE_NODE_TAG
+import org.nsh07.wikireader.translation.ARTICLE_SUBHEADING_NODE
 import org.nsh07.wikireader.translation.TranslationConfig
 import org.nsh07.wikireader.translation.TranslationRepository
+import org.nsh07.wikireader.translation.articleImageCaptionText
+import org.nsh07.wikireader.translation.cleanArticleTextForTranslation
+import org.nsh07.wikireader.translation.galleryTextUnits
+import org.nsh07.wikireader.translation.isArticleSubheadingNode
+import org.nsh07.wikireader.translation.translatableArticleParagraphs
+import org.nsh07.wikireader.translation.wikitextSubheadingText
+import org.nsh07.wikireader.ui.settingsScreen.viewModel.activeTranslationApiKey
 import org.nsh07.wikireader.ui.settingsScreen.viewModel.PreferencesState
 import kotlin.math.min
 
@@ -114,6 +125,7 @@ class HomeScreenViewModel(
             return field
         }
     private var translationJob: Job? = null
+    private val translationJobs = mutableMapOf<BilingualTextKey, Job>()
     private var searchDebounceJob: Job? = null
 
     val appStatus = appStatusFlow
@@ -172,7 +184,10 @@ class HomeScreenViewModel(
             is HomeAction.LoadSearch -> loadSearch(action.query)
             is HomeAction.LoadSearchResultsDebounced -> loadSearchResultsDebounced(action.query)
             is HomeAction.MarkUserLanguageSelected -> markUserLanguageSelected(action.lang)
+            is HomeAction.PrefetchTranslations -> prefetchTranslations(action.sectionIndices)
             is HomeAction.ReloadPage -> reloadPage(action.persistLang)
+            is HomeAction.RetryTranslation -> retryTranslation(action.key)
+            is HomeAction.ExplainText -> explainText(action)
             is HomeAction.SaveArticle -> viewModelScope.launch {
                 if (backStack.last() is HomeSubscreen.Article) {
                     val last = backStack.last() as HomeSubscreen.Article
@@ -205,6 +220,7 @@ class HomeScreenViewModel(
             }
 
             is HomeAction.HideRef -> hideRef()
+            is HomeAction.HideTextExplanation -> hideTextExplanation()
             is HomeAction.LoadRandom -> loadPage(title = null, random = true)
             is HomeAction.ScrollToTop -> viewModelScope.launch {
                 if (backStack.last() is HomeSubscreen.Article)
@@ -228,6 +244,7 @@ class HomeScreenViewModel(
     private fun stopAll() {
         loaderJob.cancel()
         translationJob?.cancel()
+        clearTranslationJobs()
         fromLink = true
         _homeScreenState.update { it.copy(isLoading = false) }
     }
@@ -307,6 +324,7 @@ class HomeScreenViewModel(
                             translations = emptyMap()
                         )
                     }
+                    clearTranslationJobs()
                     if (!random && listStatePair == null && preferencesState.value.searchHistory) {
                         appDatabaseRepository.insertSearchHistory(
                             SearchHistoryItem(
@@ -396,7 +414,13 @@ class HomeScreenViewModel(
                         lastQuery = Pair(title, setLang)
                     }
                     _homeScreenState.update { currentState ->
-                        currentState.copy(isLoading = true, loadingProgress = null)
+                        currentState.copy(
+                            isLoading = true,
+                            loadingProgress = null,
+                            targetTitle = null,
+                            targetLang = null,
+                            translations = emptyMap()
+                        )
                     }
 
                     val apiResponse = when (random) {
@@ -477,7 +501,7 @@ class HomeScreenViewModel(
                     if (!replaceBackstackEntry) backStack.add(initialArticle)
                     else backStack[backStack.lastIndex] = initialArticle
 
-                    maybeTranslateArticle(article = initialArticle, rawSections = extract)
+                    prepareBilingualArticle(article = initialArticle)
 
                     // Reset refList
                     refCount = 1
@@ -563,7 +587,7 @@ class HomeScreenViewModel(
         val prefs = preferencesState.value
         return TranslationConfig(
             enabled = prefs.bilingualEnabled,
-            apiKey = prefs.translationApiKey,
+            apiKey = prefs.activeTranslationApiKey(),
             baseUrl = prefs.translationBaseUrl,
             model = prefs.translationModel,
             targetLang = prefs.translationTargetLang,
@@ -572,10 +596,7 @@ class HomeScreenViewModel(
         )
     }
 
-    private fun maybeTranslateArticle(
-        article: HomeSubscreen.Article,
-        rawSections: List<String>
-    ) {
+    private fun prepareBilingualArticle(article: HomeSubscreen.Article) {
         val config = translationConfig()
         val sourceLang = article.currentLang ?: preferencesState.value.lang
         if (!config.canTranslate || config.targetLang == sourceLang) return
@@ -597,52 +618,281 @@ class HomeScreenViewModel(
                 it.copy(targetTitle = targetTitle, targetLang = config.targetLang)
             }
 
-            rawSections.forEachIndexed { index, rawSection ->
-                if (!shouldTranslateSection(rawSections, index)) return@forEachIndexed
+            article.photoDesc?.takeIf { it.isNotBlank() }?.let { description ->
+                translateParagraph(
+                    article = article,
+                    key = BilingualTextKeys.ArticleDescription,
+                    text = description,
+                    sourceLang = sourceLang,
+                    config = config,
+                    force = false
+                )
+            }
+        }
+    }
 
-                _homeScreenState.update {
-                    it.copy(
-                        translations = it.translations + (
-                                index to BilingualSectionTranslation(
-                                    status = BilingualTranslationStatus.LOADING
-                                )
-                                )
+    private fun prefetchTranslations(sectionIndices: List<Int>) {
+        val article = backStack.lastOrNull() as? HomeSubscreen.Article ?: return
+        val config = translationConfig()
+        val sourceLang = article.currentLang ?: preferencesState.value.lang
+        if (!config.canTranslate || config.targetLang == sourceLang) return
+        val autoTranslateParagraphs = preferencesState.value.bilingualAutoTranslateBlocks
+
+        sectionIndices.forEach { sectionIndex ->
+            if (!shouldTranslateArticleSection(article, sectionIndex)) return@forEach
+
+            article.extract.sectionHeadingText(sectionIndex)?.let { heading ->
+                translateParagraph(
+                    article = article,
+                    key = BilingualTextKeys.sectionHeading(sectionIndex),
+                    text = heading,
+                    sourceLang = sourceLang,
+                    config = config,
+                    force = false
+                )
+            }
+
+            article.extract.getOrNull(sectionIndex)?.forEachIndexed { itemIndex, bodyItem ->
+                if (autoTranslateParagraphs || bodyItem.isArticleSubheadingNode()) {
+                    bodyItem.translatableArticleParagraphs()
+                        .forEachIndexed { paragraphIndex, paragraph ->
+                            translateParagraph(
+                                article = article,
+                                key = BilingualTextKey(sectionIndex, itemIndex, paragraphIndex),
+                                text = paragraph.toString(),
+                                sourceLang = sourceLang,
+                                config = config,
+                                force = false
+                            )
+                        }
+                }
+                bodyItem.toString().articleImageCaptionText()?.let { caption ->
+                    translateParagraph(
+                        article = article,
+                        key = BilingualTextKey(sectionIndex, itemIndex, 0),
+                        text = caption,
+                        sourceLang = sourceLang,
+                        config = config,
+                        force = false
                     )
                 }
-
-                launch {
-                    val result = runCatching {
-                        translationRepository.translateContent(
-                            text = rawSection,
-                            sourceLang = sourceLang,
-                            targetLang = config.targetLang,
-                            config = config
-                        )
-                    }
-
-                    _homeScreenState.update {
-                        val translation =
-                            if (result.isSuccess && result.getOrNull().orEmpty().isNotBlank()) {
-                                BilingualSectionTranslation(
-                                    status = BilingualTranslationStatus.READY,
-                                    text = result.getOrThrow()
-                                )
-                            } else {
-                                BilingualSectionTranslation(
-                                    status = BilingualTranslationStatus.ERROR,
-                                    error = result.exceptionOrNull()?.message ?: "Translation failed"
-                                )
-                            }
-                        it.copy(translations = it.translations + (index to translation))
-                    }
+                bodyItem.toString().galleryTextUnits().forEachIndexed { captionIndex, item ->
+                    val text = item.translationSource.takeIf { it.isNotBlank() }
+                        ?: return@forEachIndexed
+                    translateParagraph(
+                        article = article,
+                        key = BilingualTextKey(sectionIndex, itemIndex, captionIndex),
+                        text = text,
+                        sourceLang = sourceLang,
+                        config = config,
+                        force = false
+                    )
                 }
             }
         }
     }
 
-    private fun shouldTranslateSection(rawSections: List<String>, index: Int): Boolean {
-        if (index % 2 == 1 || rawSections[index].isBlank()) return false
-        val heading = rawSections.getOrNull(index - 1)?.trim()?.lowercase()
+    private fun retryTranslation(key: BilingualTextKey) {
+        val article = backStack.lastOrNull() as? HomeSubscreen.Article ?: return
+        val config = translationConfig()
+        val sourceLang = article.currentLang ?: preferencesState.value.lang
+        if (!config.canTranslate || config.targetLang == sourceLang) return
+
+        val text = article.translationSourceFor(key)
+            ?: return
+
+        translateParagraph(
+            article = article,
+            key = key,
+            text = text,
+            sourceLang = sourceLang,
+            config = config,
+            force = true
+        )
+    }
+
+    private fun translateParagraph(
+        article: HomeSubscreen.Article,
+        key: BilingualTextKey,
+        text: String,
+        sourceLang: String,
+        config: TranslationConfig,
+        force: Boolean
+    ) {
+        val existing = _homeScreenState.value.translations[key]
+        if (!force && existing?.status in setOf(
+                BilingualTranslationStatus.LOADING,
+                BilingualTranslationStatus.READY
+            )
+        ) return
+        if (!force && translationJobs[key]?.isActive == true) return
+
+        translationJobs[key]?.cancel()
+        _homeScreenState.update {
+            it.copy(
+                targetLang = config.targetLang,
+                translations = it.translations + (
+                        key to BilingualSectionTranslation(
+                            status = BilingualTranslationStatus.LOADING
+                        )
+                        )
+            )
+        }
+
+        translationJobs[key] = viewModelScope.launch(Dispatchers.IO) {
+            val result = runCatching {
+                if (key == BilingualTextKeys.ArticleDescription) {
+                    translationRepository.translateDescription(
+                        title = article.title,
+                        description = text.cleanArticleTextForTranslation(),
+                        sourceLang = sourceLang,
+                        targetLang = config.targetLang,
+                        config = config
+                    )
+                } else {
+                    translationRepository.translateContent(
+                        text = text.cleanArticleTextForTranslation(),
+                        sourceLang = sourceLang,
+                        targetLang = config.targetLang,
+                        config = config
+                    )
+                }
+            }
+
+            _homeScreenState.update {
+                val translation =
+                    if (result.isSuccess && result.getOrNull().orEmpty().isNotBlank()) {
+                        BilingualSectionTranslation(
+                            status = BilingualTranslationStatus.READY,
+                            text = result.getOrThrow()
+                        )
+                    } else {
+                        val message = sanitizeTranslationError(
+                            result.exceptionOrNull()?.message ?: "Empty provider response"
+                        )
+                        Log.w(
+                            "Translation",
+                            "Article paragraph translation failed at $key in ${article.title}: $message"
+                        )
+                        BilingualSectionTranslation(
+                            status = BilingualTranslationStatus.ERROR,
+                            error = message
+                        )
+                    }
+                it.copy(translations = it.translations + (key to translation))
+            }
+            translationJobs.remove(key)
+        }
+    }
+
+    private fun explainText(action: HomeAction.ExplainText) {
+        val config = translationConfig()
+        val article = backStack.lastOrNull() as? HomeSubscreen.Article
+        val sourceLang = article?.currentLang ?: preferencesState.value.lang
+        if (!config.canTranslate || action.text.isBlank()) return
+
+        _homeScreenState.update {
+            it.copy(
+                targetLang = config.targetLang,
+                textExplanation = TextExplanationState(
+                    mode = action.mode,
+                    sourceText = action.text,
+                    context = action.context,
+                    status = BilingualTranslationStatus.LOADING
+                )
+            )
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = runCatching {
+                if (action.mode == "word") {
+                    translationRepository.explainVocabulary(
+                        targetText = action.text,
+                        sentence = action.context,
+                        context = article?.extract
+                            ?.flatten()
+                            ?.joinToString(separator = "\n") { it.toString() }
+                            .orEmpty()
+                            .take(1_500),
+                        sourceLang = sourceLang,
+                        targetLang = config.targetLang,
+                        config = config
+                    )
+                } else {
+                    translationRepository.translateSentence(
+                        sentence = action.text,
+                        context = action.context,
+                        sourceLang = sourceLang,
+                        targetLang = config.targetLang,
+                        config = config
+                    )
+                }
+            }
+
+            _homeScreenState.update {
+                it.copy(
+                    textExplanation =
+                        if (result.isSuccess && result.getOrNull().orEmpty().isNotBlank()) {
+                            TextExplanationState(
+                                mode = action.mode,
+                                sourceText = action.text,
+                                context = action.context,
+                                status = BilingualTranslationStatus.READY,
+                                result = result.getOrThrow()
+                            )
+                        } else {
+                            TextExplanationState(
+                                mode = action.mode,
+                                sourceText = action.text,
+                                context = action.context,
+                                status = BilingualTranslationStatus.ERROR,
+                                error = sanitizeTranslationError(
+                                    result.exceptionOrNull()?.message
+                                        ?: "Empty provider response"
+                                )
+                            )
+                        }
+                )
+            }
+        }
+    }
+
+    private fun hideTextExplanation() {
+        _homeScreenState.update { it.copy(textExplanation = null) }
+    }
+
+    private fun HomeSubscreen.Article.translationSourceFor(key: BilingualTextKey): String? {
+        if (key == BilingualTextKeys.ArticleDescription) return photoDesc
+        if (key.itemIndex == -1) return extract.sectionHeadingText(key.sectionIndex + 1)
+
+        val bodyItem = extract
+            .getOrNull(key.sectionIndex)
+            ?.getOrNull(key.itemIndex)
+            ?: return null
+
+        return bodyItem.translatableArticleParagraphs()
+            .getOrNull(key.paragraphIndex)
+            ?.toString()
+            ?.cleanArticleTextForTranslation()
+            ?: bodyItem.toString().articleImageCaptionText()
+            ?: bodyItem.toString().galleryTextUnits()
+                .getOrNull(key.paragraphIndex)
+                ?.translationSource
+    }
+
+    private fun List<List<AnnotatedString>>.sectionHeadingText(sectionBodyIndex: Int): String? =
+        getOrNull(sectionBodyIndex - 1)
+            ?.joinToString(separator = "") { it.toString() }
+            ?.replace("<.+>".toRegex(), "")
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+
+    private fun shouldTranslateArticleSection(article: HomeSubscreen.Article, index: Int): Boolean {
+        if (index % 2 == 1 || article.extract.getOrNull(index).isNullOrEmpty()) return false
+        val heading = article.extract.getOrNull(index - 1)
+            ?.joinToString(separator = "") { it.toString() }
+            ?.trim()
+            ?.lowercase()
         return heading !in setOf(
             "references",
             "further reading",
@@ -801,8 +1051,15 @@ class HomeScreenViewModel(
     private suspend fun loadSavedArticle(pageId: Int, lang: String): WRStatus =
         withContext(Dispatchers.IO) {
             _homeScreenState.update { currentState ->
-                currentState.copy(isLoading = true, loadingProgress = null)
+                currentState.copy(
+                    isLoading = true,
+                    loadingProgress = null,
+                    targetTitle = null,
+                    targetLang = null,
+                    translations = emptyMap()
+                )
             }
+            clearTranslationJobs()
 
             val savedArticle = appDatabaseRepository.getSavedArticle(pageId, lang)
 
@@ -846,19 +1103,19 @@ class HomeScreenViewModel(
                     }
                 }
 
-                backStack.add(
-                    HomeSubscreen.Article(
-                        title = apiResponse?.title ?: "Error",
-                        photo = apiResponse?.photo,
-                        photoDesc = apiResponse?.description,
-                        langs = apiResponse?.langs,
-                        currentLang = preferencesState.value.lang,
-                        pageId = apiResponse?.pageId,
-                        savedStatus = SavedStatus.SAVED,
-                        extract = parsedExtract,
-                        sections = articleSections
-                    )
+                val article = HomeSubscreen.Article(
+                    title = apiResponse?.title ?: "Error",
+                    photo = apiResponse?.photo,
+                    photoDesc = apiResponse?.description,
+                    langs = apiResponse?.langs,
+                    currentLang = preferencesState.value.lang,
+                    pageId = apiResponse?.pageId,
+                    savedStatus = SavedStatus.SAVED,
+                    extract = parsedExtract,
+                    sections = articleSections
                 )
+                backStack.add(article)
+                prepareBilingualArticle(article)
 
                 refCount = 1
                 refList.clear()
@@ -891,6 +1148,42 @@ class HomeScreenViewModel(
             val out = mutableListOf<AnnotatedString>()
 
             while (i < wikitext.length) {
+                if (stack == 0 && wikitext.isLineStart(i) && wikitext[i] == '=') {
+                    val lineEnd = wikitext.indexOf('\n', i).let { if (it == -1) wikitext.length else it }
+                    val headingLine = wikitext.substring(i, lineEnd)
+                    if (headingLine.wikitextSubheadingText() != null) {
+                        out.add(
+                            curr.toWikitextAnnotatedString(
+                                colorScheme = colorScheme,
+                                typography = typography,
+                                loadPage = ::loadPage,
+                                fontSize = preferencesState.value.fontSize,
+                                showRef = ::updateRef
+                            )
+                        )
+                        val renderedHeading = headingLine.toWikitextAnnotatedString(
+                            colorScheme = colorScheme,
+                            typography = typography,
+                            loadPage = ::loadPage,
+                            fontSize = preferencesState.value.fontSize,
+                            showRef = ::updateRef
+                        )
+                        out.add(
+                            buildAnnotatedString {
+                                pushStringAnnotation(
+                                    tag = ARTICLE_NODE_TAG,
+                                    annotation = ARTICLE_SUBHEADING_NODE
+                                )
+                                append(renderedHeading)
+                                pop()
+                            }
+                        )
+                        curr = ""
+                        i = lineEnd
+                        continue
+                    }
+                }
+
                 if (wikitext[i] == '{')
                     stack++
                 else if (wikitext[i] == '}')
@@ -1054,6 +1347,9 @@ class HomeScreenViewModel(
             out.toList()
         }
 
+    private fun String.isLineStart(index: Int): Boolean =
+        index == 0 || getOrNull(index - 1) == '\n'
+
     private fun updateRef(ref: String) {
         _homeScreenState.update { currentState ->
             currentState.copy(
@@ -1125,6 +1421,11 @@ class HomeScreenViewModel(
         }
     }
 
+    private fun clearTranslationJobs() {
+        translationJobs.values.forEach { it.cancel() }
+        translationJobs.clear()
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
@@ -1149,3 +1450,8 @@ class HomeScreenViewModel(
         }
     }
 }
+
+private fun sanitizeTranslationError(message: String): String =
+    message
+        .replace(Regex("sk-[A-Za-z0-9_-]+"), "sk-...")
+        .take(240)

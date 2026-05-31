@@ -26,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,8 +35,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import org.nsh07.wikireader.data.WikiLang
 import org.nsh07.wikireader.translation.BilingualSectionTranslation
+import org.nsh07.wikireader.translation.BilingualTextKey
+import org.nsh07.wikireader.translation.BilingualTextKeys
 import org.nsh07.wikireader.ui.homeScreen.viewModel.HomeAction
 import org.nsh07.wikireader.ui.homeScreen.viewModel.HomeSubscreen
 import org.nsh07.wikireader.ui.image.ImageCard
@@ -48,7 +52,7 @@ fun PageContent(
     content: HomeSubscreen.Article,
     targetTitle: String?,
     targetLang: String?,
-    translations: Map<Int, BilingualSectionTranslation>,
+    translations: Map<BilingualTextKey, BilingualSectionTranslation>,
     sharedScope: SharedTransitionScope,
     preferencesState: PreferencesState,
     insets: PaddingValues,
@@ -96,6 +100,25 @@ fun PageContent(
         delay(3000)
         isRefreshing = false
     } // hide refresh indicator after a delay
+
+    LaunchedEffect(
+        content.pageId,
+        content.currentLang,
+        preferencesState.bilingualEnabled,
+        preferencesState.bilingualAutoTranslateBlocks
+    ) {
+        snapshotFlow {
+            val visibleIndexes = content.listState.layoutInfo.visibleItemsInfo.map { it.index }
+            val lastVisible = visibleIndexes.maxOrNull() ?: 1
+            (visibleIndexes + ((lastVisible + 1)..(lastVisible + 4))).mapNotNull {
+                it.toArticleBodySectionIndex()
+            }.distinct().sorted()
+        }
+            .distinctUntilChanged()
+            .collect {
+                if (it.isNotEmpty()) onAction(HomeAction.PrefetchTranslations(it))
+            }
+    }
 
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -174,6 +197,25 @@ fun PageContent(
                                         )
                                         .fillMaxWidth()
                                 )
+                                PlainBilingualTranslationText(
+                                    translation = translations[BilingualTextKeys.ArticleDescription],
+                                    targetLang = targetLang,
+                                    fontSize = fontSize,
+                                    fontFamily = FontFamily.Serif,
+                                    onRetry = {
+                                        onAction(
+                                            HomeAction.RetryTranslation(
+                                                BilingualTextKeys.ArticleDescription
+                                            )
+                                        )
+                                    },
+                                    modifier = Modifier.padding(
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        top = 0.dp,
+                                        bottom = 16.dp
+                                    )
+                                )
                             }
                             if (photoDesc != null) {
                                 ImageCard(
@@ -192,60 +234,76 @@ fun PageContent(
             }
             item(key = content.title + "#--desc--") { // Main description
                 if (content.extract.isNotEmpty())
-                    SelectionContainer {
-                        ParsedBodyText(
-                            body = content.extract[0],
-                            lang = content.currentLang ?: "en",
-                            fontSize = fontSize,
-                            fontFamily = fontFamily,
-                            renderMath = preferencesState.renderMath,
-                            sharedScope = sharedScope,
-                            darkTheme = colorScheme.isDark(),
-                            dataSaver = preferencesState.dataSaver,
-                            background = preferencesState.imageBackground,
-                            checkFirstImage = true,
-                            onLinkClick = { onAction(HomeAction.LoadPage(it)) },
-                            onGalleryImageClick = onGalleryImageClick,
-                            showRef = { onAction(HomeAction.UpdateRef(it)) },
-                            pageImageUri = content.photo?.source
-                        )
-                        BilingualTranslationBlock(
-                            translation = translations[0],
-                            targetLang = targetLang,
-                            fontSize = fontSize,
-                            fontFamily = fontFamily
-                        )
-                    }
+                    ParsedBodyText(
+                        body = content.extract[0],
+                        lang = content.currentLang ?: "en",
+                        fontSize = fontSize,
+                        fontFamily = fontFamily,
+                        renderMath = preferencesState.renderMath,
+                        sharedScope = sharedScope,
+                        darkTheme = colorScheme.isDark(),
+                        dataSaver = preferencesState.dataSaver,
+                        background = preferencesState.imageBackground,
+                        checkFirstImage = true,
+                        onLinkClick = { onAction(HomeAction.LoadPage(it)) },
+                        onGalleryImageClick = onGalleryImageClick,
+                        showRef = { onAction(HomeAction.UpdateRef(it)) },
+                        pageImageUri = content.photo?.source,
+                        sectionIndex = 0,
+                        translations = translations,
+                        targetLang = targetLang,
+                        onRetryTranslation = { onAction(HomeAction.RetryTranslation(it)) },
+                        onExplainText = { text, context, mode ->
+                            onAction(HomeAction.ExplainText(text, context, mode))
+                        },
+                        blurParagraphTranslations = preferencesState.bilingualBlurBlocks,
+                        autoTranslateParagraphs = preferencesState.bilingualAutoTranslateBlocks
+                    )
             }
             itemsIndexed(
                 content.extract,
                 key = { i, it -> "$pageId.$lang#$i" }
             ) { i: Int, it: List<AnnotatedString> ->// Expandable sections logic
                 if (i % 2 == 1)
-                    SelectionContainer {
-                        ExpandableSection(
-                            title = content.extract[i],
-                            body = content.extract.getOrElse(i + 1) { emptyList() },
-                            lang = content.currentLang ?: "en",
-                            fontSize = fontSize,
-                            fontFamily = fontFamily,
-                            sharedScope = sharedScope,
-                            expanded = preferencesState.expandedSections,
-                            darkTheme = colorScheme.isDark(),
-                            dataSaver = preferencesState.dataSaver,
-                            renderMath = preferencesState.renderMath,
-                            imageBackground = preferencesState.imageBackground,
-                            translation = translations[i + 1],
-                            targetLang = targetLang,
-                            onLinkClick = { onAction(HomeAction.LoadPage(it)) },
-                            onGalleryImageClick = onGalleryImageClick,
-                            showRef = { onAction(HomeAction.UpdateRef(it)) }
-                        )
-                    }
+                    ExpandableSection(
+                        title = content.extract[i],
+                        body = content.extract.getOrElse(i + 1) { emptyList() },
+                        lang = content.currentLang ?: "en",
+                        fontSize = fontSize,
+                        fontFamily = fontFamily,
+                        sharedScope = sharedScope,
+                        expanded = preferencesState.expandedSections,
+                        darkTheme = colorScheme.isDark(),
+                        dataSaver = preferencesState.dataSaver,
+                        renderMath = preferencesState.renderMath,
+                        imageBackground = preferencesState.imageBackground,
+                        sectionIndex = i + 1,
+                        translations = translations,
+                        targetLang = targetLang,
+                        blurParagraphTranslations = preferencesState.bilingualBlurBlocks,
+                        autoTranslateParagraphs = preferencesState.bilingualAutoTranslateBlocks,
+                        onRetryTranslation = { onAction(HomeAction.RetryTranslation(it)) },
+                        onExplainText = { text, context, mode ->
+                            onAction(HomeAction.ExplainText(text, context, mode))
+                        },
+                        onLinkClick = { onAction(HomeAction.LoadPage(it)) },
+                        onGalleryImageClick = onGalleryImageClick,
+                        showRef = { onAction(HomeAction.UpdateRef(it)) }
+                    )
             }
             item {
                 Spacer(Modifier.height(156.dp))
             }
         }
     }
+}
+
+private fun Int.toArticleBodySectionIndex(): Int? {
+    if (this == 1) return 0
+    if (this < 2) return null
+
+    val extractIndex = this - 2
+    if (extractIndex == 0) return null
+
+    return if (extractIndex % 2 == 1) extractIndex + 1 else extractIndex
 }

@@ -16,6 +16,8 @@ import org.nsh07.wikireader.data.WikiPhoto
 import org.nsh07.wikireader.data.WikiPrefixSearchResult
 import org.nsh07.wikireader.data.WikiSearchResult
 import org.nsh07.wikireader.translation.BilingualSectionTranslation
+import org.nsh07.wikireader.translation.BilingualTextKey
+import org.nsh07.wikireader.translation.BilingualTranslationStatus
 
 @Immutable
 data class AppSearchBarState(
@@ -32,7 +34,18 @@ data class HomeScreenState(
     val ref: AnnotatedString = AnnotatedString(""),
     val targetTitle: String? = null,
     val targetLang: String? = null,
-    val translations: Map<Int, BilingualSectionTranslation> = emptyMap()
+    val translations: Map<BilingualTextKey, BilingualSectionTranslation> = emptyMap(),
+    val textExplanation: TextExplanationState? = null
+)
+
+@Immutable
+data class TextExplanationState(
+    val mode: String,
+    val sourceText: String,
+    val context: String,
+    val status: BilingualTranslationStatus = BilingualTranslationStatus.LOADING,
+    val result: String? = null,
+    val error: String? = null
 )
 
 sealed class HomeSubscreen {
@@ -67,7 +80,6 @@ sealed class HomeSubscreen {
             val background: Boolean,
             val modifier: Modifier = Modifier,
             val link: String? = null,
-            val onBack: () -> Unit,
         ) : Image()
 
         data class FullScreenArticleImage(
@@ -76,7 +88,6 @@ sealed class HomeSubscreen {
             val modifier: Modifier = Modifier,
             val link: String? = null,
             val background: Boolean,
-            val onBack: () -> Unit,
         ) : Image()
     }
 

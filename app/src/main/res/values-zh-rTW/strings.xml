@@ -9,8 +9,8 @@
     <string name="cancel">取消</string>
     <string name="ok">好</string>
     <string name="about">關於</string>
-    <string name="appTagline">無干擾地閱讀維基百科</string>
-    <string name="app_name">WikiReader</string>
+    <string name="appTagline">雙語閱讀維基百科條目</string>
+    <string name="app_name">WikiReader Bilingual</string>
     <string name="author">作者</string>
     <string name="articlesSize">%1$s 個條目，%2$s 種語言</string>
     <string name="app">應用</string>
@@ -32,6 +32,7 @@
     <string name="downloadArticle">下載條目</string>
     <string name="fontStyleSerif">有襯線</string>
     <string name="fontStyleSansSerif">無襯線</string>
+    <string name="forkAuthorDesc">WikiReader Bilingual fork</string>
     <string name="history">紀錄</string>
     <string name="home">首頁</string>
     <string name="inTheNews">新聞動態</string>
@@ -42,6 +43,7 @@
     <string name="noSavedArticlesDesc">點擊條目底部工具列的下載按鈕開始下載</string>
     <string name="onThisDay">歷史上的今天</string>
     <string name="openInBrowser">在瀏覽器中開啟</string>
+    <string name="originalAuthorDesc">原版 WikiReader 作者</string>
     <string name="picOfTheDay">每日圖片</string>
     <string name="randomArticle">隨機條目</string>
     <string name="redirectedFrom">重新導向自 %1$s</string>
@@ -120,7 +122,7 @@
     <string name="settingFeed">動態消息</string>
     <string name="settingFeedDesc">在應用程式啟動時顯示熱門文章、新聞及更多的動態消息</string>
     <string name="donate">捐赠</string>
-    <string name="supportMyWork">支持我</string>
+    <string name="supportMyWork">支持上游作者</string>
     <string name="settingAppLanguage">應用程式語言</string>
     <string name="chooseAppLanguage">選擇應用程式語言</string>
     <string name="allHistoryDeleted">所有歷史紀錄均已刪除</string>
@@ -136,4 +138,24 @@
     <string name="items">%1$s 個條目</string>
     <string name="infobox">資訊框</string>
     <string name="historyDesc">儲存條目瀏覽記錄</string>
+    <string name="settingBilingualReading">雙語閱讀</string>
+    <string name="settingBilingualReadingDesc">將條目內容翻譯為第二語言</string>
+    <string name="settingBilingualBlurBlocks">點按後顯示段落譯文</string>
+    <string name="settingBilingualBlurBlocksDesc">預設模糊段落譯文，點按譯文區域後顯示</string>
+    <string name="settingBilingualAutoTranslateBlocks">自動翻譯正文段落</string>
+    <string name="settingBilingualAutoTranslateBlocksDesc">關閉後顯示佔位，需要點按按鈕才翻譯正文段落</string>
+    <string name="settingTranslationDeepSeekApiKey">DeepSeek API Key</string>
+    <string name="settingTranslationTargetLang">目標維基百科語言</string>
+    <string name="settingTranslationMaxConcurrency">翻譯並發數</string>
+    <string name="settingTranslationMaxConcurrencyValue">翻譯並發數：%1$d</string>
+    <string name="settingTranslationTest">測試翻譯</string>
+    <string name="settingTranslationTestRunning">正在測試翻譯…</string>
+    <string name="translationLoading">正在翻譯…</string>
+    <string name="translationUnavailable">翻譯不可用</string>
+    <string name="translationReadyToStart">準備翻譯</string>
+    <string name="retry">重試</string>
+    <string name="explainWord">解釋「%1$s」</string>
+    <string name="wordExplanation">詞義</string>
+    <string name="sentenceTranslation">句子</string>
+    <string name="close">關閉</string>
 </resources>

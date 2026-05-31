@@ -16,7 +16,14 @@ sealed class HomeAction {
     data class LoadSearch(val query: String) : HomeAction()
     data class LoadSearchResultsDebounced(val query: String) : HomeAction()
     data class MarkUserLanguageSelected(val lang: String) : HomeAction()
+    data class PrefetchTranslations(val sectionIndices: List<Int>) : HomeAction()
     data class ReloadPage(val persistLang: Boolean = false) : HomeAction()
+    data class RetryTranslation(val key: org.nsh07.wikireader.translation.BilingualTextKey) : HomeAction()
+    data class ExplainText(
+        val text: String,
+        val context: String,
+        val mode: String
+    ) : HomeAction()
     data class SaveArticle(
         val lang: String,
         val unableToSaveError: String,
@@ -29,6 +36,7 @@ sealed class HomeAction {
     data class UpdateRef(val ref: String) : HomeAction()
     object FocusSearchBar : HomeAction()
     object HideRef : HomeAction()
+    object HideTextExplanation : HomeAction()
     object LoadRandom : HomeAction()
     object ScrollToTop : HomeAction()
     object StopAll : HomeAction()

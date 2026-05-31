@@ -21,10 +21,14 @@ data class PreferencesState(
     val browsingHistory: Boolean = true,
     val searchHistory: Boolean = true,
     val bilingualEnabled: Boolean = false,
-    val translationApiKey: String = "",
+    val bilingualBlurBlocks: Boolean = true,
+    val bilingualAutoTranslateBlocks: Boolean = true,
+    val translationDeepSeekApiKey: String = "",
     val translationBaseUrl: String = TranslationConfig.DEFAULT_BASE_URL,
     val translationModel: String = TranslationConfig.DEFAULT_MODEL,
     val translationTargetLang: String = TranslationConfig.DEFAULT_TARGET_LANG,
     val translationUserId: String = TranslationConfig.DEFAULT_USER_ID,
-    val translationMaxConcurrency: Int = TranslationConfig.DEFAULT_MAX_CONCURRENCY
+    val translationMaxConcurrency: Int = TranslationConfig.DEFAULT_MAX_CONCURRENCY,
+    val translationTestInProgress: Boolean = false,
+    val translationTestMessage: String? = null
 )

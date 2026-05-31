@@ -19,6 +19,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,8 +31,12 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.AlertDialogDefaults
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconToggleButton
@@ -51,7 +56,9 @@ import androidx.compose.material3.MaterialTheme.shapes
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
@@ -72,6 +79,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.core.text.parseAsHtml
@@ -86,6 +96,7 @@ import org.nsh07.wikireader.data.WikiPhoto
 import org.nsh07.wikireader.ui.homeScreen.viewModel.HomeAction
 import org.nsh07.wikireader.ui.homeScreen.viewModel.HomeScreenState
 import org.nsh07.wikireader.ui.homeScreen.viewModel.HomeSubscreen
+import org.nsh07.wikireader.translation.BilingualTranslationStatus
 import org.nsh07.wikireader.ui.image.FullScreenArticleImage
 import org.nsh07.wikireader.ui.image.FullScreenImage
 import org.nsh07.wikireader.ui.settingsScreen.LanguageBottomSheet
@@ -216,6 +227,70 @@ fun AppHomeScreen(
             }
         }
 
+    homeScreenState.textExplanation?.let { explanation ->
+        BasicAlertDialog(onDismissRequest = { onAction(HomeAction.HideTextExplanation) }) {
+            Surface(
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .wrapContentHeight(),
+                shape = MaterialTheme.shapes.extraLarge,
+                tonalElevation = AlertDialogDefaults.TonalElevation
+            ) {
+                Column(Modifier.padding(24.dp)) {
+                    Text(
+                        text = stringResource(
+                            if (explanation.mode == "word") R.string.wordExplanation
+                            else R.string.sentenceTranslation
+                        ),
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                    ExplanationSourceText(
+                        explanation = explanation,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                    when (explanation.status) {
+                        BilingualTranslationStatus.LOADING -> Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 20.dp)
+                        ) {
+                            LoadingIndicator(modifier = Modifier.size(24.dp))
+                            Text(
+                                text = stringResource(R.string.translationLoading),
+                                modifier = Modifier.padding(start = 12.dp)
+                            )
+                        }
+
+                        BilingualTranslationStatus.READY -> Text(
+                            text = explanation.result.orEmpty(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(top = 20.dp)
+                        )
+
+                        BilingualTranslationStatus.ERROR -> Text(
+                            text = explanation.error
+                                ?: stringResource(R.string.translationUnavailable),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colorScheme.error,
+                            modifier = Modifier.padding(top = 20.dp)
+                        )
+
+                        BilingualTranslationStatus.IDLE -> Unit
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 24.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { onAction(HomeAction.HideTextExplanation) }) {
+                            Text(stringResource(R.string.close))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     val pagerState =
         if (backStack[0] is HomeSubscreen.Feed && (backStack[0] as HomeSubscreen.Feed).mostReadArticles != null)
             rememberPagerState { (backStack[0] as HomeSubscreen.Feed).mostReadArticles!!.size / 5 }
@@ -301,8 +376,7 @@ fun AppHomeScreen(
                                             .toString(),
                                         title = entry.image?.title ?: "",
                                         link = entry.image?.filePage,
-                                        background = preferencesState.imageBackground,
-                                        onBack = backStack::removeLastOrNull
+                                        background = preferencesState.imageBackground
                                     )
                                 )
                             },
@@ -339,8 +413,7 @@ fun AppHomeScreen(
                                         photoDesc = entry.photoDesc,
                                         title = entry.title,
                                         background = preferencesState.imageBackground,
-                                        link = entry.photo?.source,
-                                        onBack = backStack::removeLastOrNull
+                                        link = entry.photo?.source
                                     )
                                 )
                             },
@@ -350,8 +423,7 @@ fun AppHomeScreen(
                                         uri = uri,
                                         description = description,
                                         link = uri,
-                                        background = preferencesState.imageBackground,
-                                        onBack = backStack::removeLastOrNull
+                                        background = preferencesState.imageBackground
                                     )
                                 )
                             },
@@ -369,7 +441,7 @@ fun AppHomeScreen(
                             title = it.title,
                             background = it.background,
                             link = it.link,
-                            onBack = it.onBack
+                            onBack = { backStack.removeLastOrNull() }
                         )
                     }
 
@@ -380,7 +452,7 @@ fun AppHomeScreen(
                             sharedScope = this@SharedTransitionLayout,
                             background = it.background,
                             link = it.link,
-                            onBack = it.onBack
+                            onBack = { backStack.removeLastOrNull() }
                         )
                     }
                 }
@@ -607,6 +679,45 @@ fun AppHomeScreen(
                 )
             )
     }
+}
+
+@Composable
+private fun ExplanationSourceText(
+    explanation: org.nsh07.wikireader.ui.homeScreen.viewModel.TextExplanationState,
+    modifier: Modifier = Modifier
+) {
+    val text =
+        if (explanation.mode == "word" && explanation.context.isNotBlank()) {
+            explanation.context
+        } else {
+            explanation.sourceText
+        }
+    val selected = explanation.sourceText
+    val selectedStart =
+        if (explanation.mode == "word") text.indexOf(selected, ignoreCase = true) else -1
+
+    Text(
+        text = buildAnnotatedString {
+            if (selectedStart < 0) {
+                append(text)
+                return@buildAnnotatedString
+            }
+
+            append(text.substring(0, selectedStart))
+            pushStyle(
+                SpanStyle(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+            append(text.substring(selectedStart, selectedStart + selected.length))
+            pop()
+            append(text.substring(selectedStart + selected.length))
+        },
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier
+    )
 }
 
 @Composable

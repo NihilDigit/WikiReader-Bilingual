@@ -20,11 +20,13 @@ import org.nsh07.wikireader.data.AppStatus
 import org.nsh07.wikireader.data.PreferencesRepository
 import org.nsh07.wikireader.network.HostSelectionInterceptor
 import org.nsh07.wikireader.translation.TranslationConfig
+import org.nsh07.wikireader.translation.TranslationRepository
 
 class SettingsViewModel(
     private val appStatusFlow: MutableStateFlow<AppStatus>,
     private val preferencesStateMutableFlow: MutableStateFlow<PreferencesState>,
     private val interceptor: HostSelectionInterceptor,
+    private val translationRepository: TranslationRepository,
     private val appDatabaseRepository: AppDatabaseRepository,
     private val appPreferencesRepository: PreferencesRepository
 ) : ViewModel() {
@@ -68,32 +70,28 @@ class SettingsViewModel(
             val bilingualEnabled =
                 appPreferencesRepository.readBooleanPreference("bilingual-enabled")
                     ?: appPreferencesRepository.saveBooleanPreference("bilingual-enabled", false)
-            val translationApiKey =
-                appPreferencesRepository.readStringPreference("translation-api-key")
-                    ?: appPreferencesRepository.saveStringPreference("translation-api-key", "")
-            val translationBaseUrl =
-                appPreferencesRepository.readStringPreference("translation-base-url")
-                    ?: appPreferencesRepository.saveStringPreference(
-                        "translation-base-url",
-                        TranslationConfig.DEFAULT_BASE_URL
+            val bilingualBlurBlocks =
+                appPreferencesRepository.readBooleanPreference("bilingual-blur-blocks")
+                    ?: appPreferencesRepository.saveBooleanPreference("bilingual-blur-blocks", true)
+            val bilingualAutoTranslateBlocks =
+                appPreferencesRepository.readBooleanPreference("bilingual-auto-translate-blocks")
+                    ?: appPreferencesRepository.saveBooleanPreference(
+                        "bilingual-auto-translate-blocks",
+                        true
                     )
-            val translationModel =
-                appPreferencesRepository.readStringPreference("translation-model")
+            val legacyTranslationApiKey =
+                appPreferencesRepository.readStringPreference("translation-api-key").orEmpty()
+            val translationDeepSeekApiKey =
+                appPreferencesRepository.readStringPreference("translation-deepseek-api-key")
                     ?: appPreferencesRepository.saveStringPreference(
-                        "translation-model",
-                        TranslationConfig.DEFAULT_MODEL
+                        "translation-deepseek-api-key",
+                        legacyTranslationApiKey
                     )
             val translationTargetLang =
                 appPreferencesRepository.readStringPreference("translation-target-lang")
                     ?: appPreferencesRepository.saveStringPreference(
                         "translation-target-lang",
                         TranslationConfig.DEFAULT_TARGET_LANG
-                    )
-            val translationUserId =
-                appPreferencesRepository.readStringPreference("translation-user-id")
-                    ?: appPreferencesRepository.saveStringPreference(
-                        "translation-user-id",
-                        TranslationConfig.DEFAULT_USER_ID
                     )
             val translationMaxConcurrency =
                 appPreferencesRepository.readIntPreference("translation-max-concurrency")
@@ -119,11 +117,13 @@ class SettingsViewModel(
                     browsingHistory = browsingHistory,
                     theme = theme,
                     bilingualEnabled = bilingualEnabled,
-                    translationApiKey = translationApiKey,
-                    translationBaseUrl = translationBaseUrl,
-                    translationModel = translationModel,
+                    bilingualBlurBlocks = bilingualBlurBlocks,
+                    bilingualAutoTranslateBlocks = bilingualAutoTranslateBlocks,
+                    translationDeepSeekApiKey = translationDeepSeekApiKey,
+                    translationBaseUrl = TranslationConfig.DEFAULT_BASE_URL,
+                    translationModel = TranslationConfig.DEFAULT_MODEL,
                     translationTargetLang = translationTargetLang,
-                    translationUserId = translationUserId,
+                    translationUserId = TranslationConfig.DEFAULT_USER_ID,
                     translationMaxConcurrency = translationMaxConcurrency
                 )
             }
@@ -171,28 +171,12 @@ class SettingsViewModel(
                 appPreferencesRepository.saveStringPreference("color-scheme", action.value)
             }
 
-            is SettingsAction.SaveTranslationApiKey -> viewModelScope.launch {
+            is SettingsAction.SaveTranslationDeepSeekApiKey -> viewModelScope.launch {
+                val apiKey = action.value.trim()
                 preferencesStateMutableFlow.update { currentState ->
-                    currentState.copy(translationApiKey = action.value.trim())
+                    currentState.copy(translationDeepSeekApiKey = apiKey)
                 }
-                appPreferencesRepository.saveStringPreference("translation-api-key", action.value.trim())
-            }
-
-            is SettingsAction.SaveTranslationBaseUrl -> viewModelScope.launch {
-                preferencesStateMutableFlow.update { currentState ->
-                    currentState.copy(translationBaseUrl = action.value.trim())
-                }
-                appPreferencesRepository.saveStringPreference(
-                    "translation-base-url",
-                    action.value.trim()
-                )
-            }
-
-            is SettingsAction.SaveTranslationModel -> viewModelScope.launch {
-                preferencesStateMutableFlow.update { currentState ->
-                    currentState.copy(translationModel = action.value.trim())
-                }
-                appPreferencesRepository.saveStringPreference("translation-model", action.value.trim())
+                appPreferencesRepository.saveStringPreference("translation-deepseek-api-key", apiKey)
             }
 
             is SettingsAction.SaveTranslationTargetLang -> viewModelScope.launch {
@@ -205,14 +189,6 @@ class SettingsViewModel(
                 )
             }
 
-            is SettingsAction.SaveTranslationUserId -> viewModelScope.launch {
-                val userId = action.value.trim()
-                preferencesStateMutableFlow.update { currentState ->
-                    currentState.copy(translationUserId = userId)
-                }
-                appPreferencesRepository.saveStringPreference("translation-user-id", userId)
-            }
-
             is SettingsAction.SaveTranslationMaxConcurrency -> viewModelScope.launch {
                 val concurrency = action.value.coerceIn(1, 16)
                 preferencesStateMutableFlow.update { currentState ->
@@ -221,11 +197,88 @@ class SettingsViewModel(
                 appPreferencesRepository.saveIntPreference("translation-max-concurrency", concurrency)
             }
 
+            SettingsAction.TestTranslationProvider -> viewModelScope.launch(Dispatchers.IO) {
+                val prefs = preferencesState.value
+                val config = TranslationConfig(
+                    enabled = true,
+                    apiKey = prefs.activeTranslationApiKey(),
+                    baseUrl = prefs.translationBaseUrl,
+                    model = prefs.translationModel,
+                    targetLang = prefs.translationTargetLang,
+                    userId = prefs.translationUserId,
+                    maxConcurrency = 1
+                )
+
+                if (!config.canTranslate) {
+                    preferencesStateMutableFlow.update { currentState ->
+                        currentState.copy(
+                            translationTestInProgress = false,
+                            translationTestMessage = "Missing API key, base URL, or model."
+                        )
+                    }
+                    return@launch
+                }
+
+                preferencesStateMutableFlow.update { currentState ->
+                    currentState.copy(
+                        translationTestInProgress = true,
+                        translationTestMessage = null
+                    )
+                }
+
+                val result = runCatching {
+                    translationRepository.translateContent(
+                        text = "Hello.",
+                        sourceLang = "en",
+                        targetLang = config.targetLang.ifBlank { TranslationConfig.DEFAULT_TARGET_LANG },
+                        config = config
+                    )
+                }
+
+                preferencesStateMutableFlow.update { currentState ->
+                    if (result.isSuccess && result.getOrNull().orEmpty().isNotBlank()) {
+                        currentState.copy(
+                            translationTestInProgress = false,
+                            translationTestMessage = "Translation test passed."
+                        )
+                    } else {
+                        val message = sanitizeTranslationError(
+                            result.exceptionOrNull()?.message ?: "Empty provider response"
+                        )
+                        Log.w("Translation", "Settings test failed: $message")
+                        currentState.copy(
+                            translationTestInProgress = false,
+                            translationTestMessage = "Translation test failed: $message"
+                        )
+                    }
+                }
+            }
+
             is SettingsAction.SaveBlackTheme -> viewModelScope.launch {
                 preferencesStateMutableFlow.update { currentState ->
                     currentState.copy(blackTheme = action.value)
                 }
                 appPreferencesRepository.saveBooleanPreference("black-theme", action.value)
+            }
+
+            is SettingsAction.SaveBilingualAutoTranslateBlocks -> viewModelScope.launch {
+                appPreferencesRepository.saveBooleanPreference(
+                    "bilingual-auto-translate-blocks",
+                    action.value
+                )
+                preferencesStateMutableFlow.update { currentState ->
+                    currentState.copy(bilingualAutoTranslateBlocks = action.value)
+                }
+            }
+
+            is SettingsAction.SaveBilingualBlurBlocks -> viewModelScope.launch {
+                appPreferencesRepository.saveBooleanPreference(
+                    "bilingual-blur-blocks",
+                    action.value
+                )
+                preferencesStateMutableFlow.update { currentState ->
+                    currentState.copy(bilingualBlurBlocks = action.value)
+                }
             }
 
             is SettingsAction.SaveBilingualEnabled -> viewModelScope.launch {
@@ -319,12 +372,14 @@ class SettingsViewModel(
                 val appStatusFlow = application.container.appStatus
                 val preferencesStateMutableFlow = application.container.preferencesStateMutableFlow
                 val interceptor = application.container.interceptor
+                val translationRepository = application.container.translationRepository
                 val appPreferencesRepository = application.container.appPreferencesRepository
                 val appHistoryRepository = application.container.appDatabaseRepository
                 SettingsViewModel(
                     appStatusFlow = appStatusFlow,
                     preferencesStateMutableFlow = preferencesStateMutableFlow,
                     interceptor = interceptor,
+                    translationRepository = translationRepository,
                     appPreferencesRepository = appPreferencesRepository,
                     appDatabaseRepository = appHistoryRepository
                 )
@@ -333,3 +388,11 @@ class SettingsViewModel(
     }
 
 }
+
+fun PreferencesState.activeTranslationApiKey(): String =
+    translationDeepSeekApiKey
+
+private fun sanitizeTranslationError(message: String): String =
+    message
+        .replace(Regex("sk-[A-Za-z0-9_-]+"), "sk-...")
+        .take(240)

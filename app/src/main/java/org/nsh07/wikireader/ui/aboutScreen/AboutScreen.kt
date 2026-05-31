@@ -34,6 +34,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.BaselineShift
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -83,9 +84,9 @@ fun AboutScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(painterResource(R.drawable.ic_launcher_foreground), null)
                         Text(
-                            if (!isAlpha) AnnotatedString(stringResource(R.string.app_name))
+                            if (!isAlpha) AnnotatedString("WikiReader\nBilingual")
                             else buildAnnotatedString {
-                                append(stringResource(R.string.app_name))
+                                append("WikiReader\nBilingual")
                                 withStyle(
                                     SpanStyle(
                                         fontSize = typography.bodyLarge.fontSize,
@@ -97,7 +98,8 @@ fun AboutScreen(
                                 }
                             },
                             style = typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
                         )
                     }
                     Text(
@@ -126,7 +128,7 @@ fun AboutScreen(
                         colors = listItemColors,
                         items = 6,
                         index = 2
-                    ) { uriHandler.openUri("https://github.com/nsh07/WikiReader") }
+                    ) { uriHandler.openUri("https://github.com/NihilDigit/WikiReader-Bilingual") }
                     ClickableListItem(
                         leadingContent = {
                             Icon(painterResource(R.drawable.gavel), null)
@@ -136,7 +138,11 @@ fun AboutScreen(
                         colors = listItemColors,
                         items = 6,
                         index = 3
-                    ) { uriHandler.openUri("https://github.com/nsh07/WikiReader/blob/main/LICENSE") }
+                    ) {
+                        uriHandler.openUri(
+                            "https://github.com/NihilDigit/WikiReader-Bilingual/blob/main/LICENSE"
+                        )
+                    }
                     ClickableListItem(
                         leadingContent = {
                             Icon(painterResource(R.drawable.update), null)
@@ -146,7 +152,11 @@ fun AboutScreen(
                         colors = listItemColors,
                         items = 6,
                         index = 4
-                    ) { uriHandler.openUri("https://github.com/nsh07/WikiReader/releases") }
+                    ) {
+                        uriHandler.openUri(
+                            "https://github.com/NihilDigit/WikiReader-Bilingual/releases"
+                        )
+                    }
                     ClickableListItem(
                         leadingContent = {
                             Icon(painterResource(R.drawable.translate), null)
@@ -173,11 +183,23 @@ fun AboutScreen(
                                 painterResource(R.drawable.github), null
                             )
                         },
-                        headlineContent = { Text("Nishant Mishra") },
-                        supportingContent = { Text(stringResource(R.string.otherProjectsDesc)) },
+                        headlineContent = { Text("NihilDigit") },
+                        supportingContent = { Text(stringResource(R.string.forkAuthorDesc)) },
                         colors = listItemColors,
-                        items = 2,
+                        items = 3,
                         index = 0
+                    ) { uriHandler.openUri("https://github.com/NihilDigit") }
+                    ClickableListItem(
+                        leadingContent = {
+                            Icon(
+                                painterResource(R.drawable.github), null
+                            )
+                        },
+                        headlineContent = { Text("Nishant Mishra") },
+                        supportingContent = { Text(stringResource(R.string.originalAuthorDesc)) },
+                        colors = listItemColors,
+                        items = 3,
+                        index = 1
                     ) { uriHandler.openUri("https://github.com/nsh07") }
                     ClickableListItem(
                         leadingContent = {
@@ -186,8 +208,8 @@ fun AboutScreen(
                         headlineContent = { Text(stringResource(R.string.donate)) },
                         supportingContent = { Text(stringResource(R.string.supportMyWork)) },
                         colors = listItemColors,
-                        items = 2,
-                        index = 1
+                        items = 3,
+                        index = 2
                     ) { uriHandler.openUri("https://github.com/sponsors/nsh07") }
                 }
             }

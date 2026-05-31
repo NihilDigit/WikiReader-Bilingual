@@ -2,21 +2,83 @@
 
 # WikiReader Bilingual
 
-A bilingual reading fork of WikiReader for learning with Wikipedia articles.
+A bilingual Android reader for learning with Wikipedia articles.
+
+<a href="https://github.com/NihilDigit/WikiReader-Bilingual/releases/latest">
+  <img src="https://img.shields.io/github/v/release/NihilDigit/WikiReader-Bilingual?logo=github&labelColor=1a1a1a">
+</a>
+<a href="https://github.com/NihilDigit/WikiReader-Bilingual/blob/main/LICENSE">
+  <img src="https://img.shields.io/github/license/NihilDigit/WikiReader-Bilingual?logo=gnu&color=blue&labelColor=1a1a1a">
+</a>
+<img src="https://img.shields.io/badge/API-26+-blue?logo=android&labelColor=1a1a1a">
 
 </div>
 
-This fork keeps the original WikiReader app structure while adding bilingual article-reading features. The Android package name is `dev.nihildigit.wikireader.bilingual`, so it can be installed beside the upstream app. The project remains GPL-3.0, following the original repository license.
+WikiReader Bilingual keeps WikiReader's clean Wikipedia reading experience and adds AI-assisted bilingual reading for article content. It is intended for reading English or other source-language Wikipedia pages with a configurable target-language translation beside the original text.
 
-Fork-specific decisions:
+The app translates Wikipedia content, not the app chrome. Labels such as `Featured article`, `Trending articles`, navigation items, and settings remain normal app UI. Article titles prefer Wikipedia's target-language title when a langlink exists; model translation is only a fallback.
 
-- Machine translation applies to Wikipedia content only, not app UI labels or navigation text.
-- Article titles should prefer the target-language Wikipedia title via langlinks, falling back to model translation only when no target title exists.
-- The default OpenAI-compatible translation backend is DeepSeek at `https://api.deepseek.com` with model `deepseek-v4-flash`.
-- Bilingual reading is configured in Settings: enable it, enter an API key, adjust base URL/model/target language, and tune concurrency. The default concurrency is 4 and is clamped to a small local range.
-- The current MVP translates article body sections and skips reference-style sections such as References, Further reading, External links, Notes, and Bibliography to avoid wasting API spend.
-- Release builds are signed and published by CI from tags such as `26.5.0`; local public-release smoke builds use `./scripts/build-local-release.sh 26.5.0`.
-- Upstream sync should keep `upstream = nsh07/WikiReader` and `origin = NihilDigit/WikiReader-Bilingual`; avoid broad package-tree rewrites so rebases stay manageable.
+## Bilingual Features
+
+- Paragraph-by-paragraph source/target reading for article body content.
+- Optional automatic paragraph translation, with manual translate placeholders when disabled.
+- Optional blur for translated paragraphs until tapped.
+- Plain-text translations for short descriptions, headings, captions, and gallery alt/caption text.
+- AI sentence translation and contextual word explanation from article text.
+- Local translation cache to reduce repeated API calls.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <img src="https://github.com/user-attachments/assets/9d073c6d-4707-4031-962a-679eabc9983d" alt="Article title and description translated into Chinese" width="100%">
+      <br>
+      <sub>Translated title and short description</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="https://github.com/user-attachments/assets/d408dcb8-cc72-4e70-9d2a-f00f76439da2" alt="Paragraph translation under the original Wikipedia text" width="100%">
+      <br>
+      <sub>Paragraph translation</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="https://github.com/user-attachments/assets/27c54d22-84d4-41b3-abf5-7932f83171db" alt="Bilingual reading settings with API key, target language, blur, auto translation, and concurrency controls" width="100%">
+      <br>
+      <sub>Bilingual settings</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%" colspan="1">
+      <img src="https://github.com/user-attachments/assets/5f8aec3e-2cdd-4211-8339-11c285bced6e" alt="Contextual word explanation in Chinese" width="100%">
+      <br>
+      <sub>Contextual word explanation</sub>
+    </td>
+    <td align="center" width="50%" colspan="2">
+      <img src="https://github.com/user-attachments/assets/201922e7-59a1-4f58-929f-01b675476601" alt="Double-tap sentence translation dialog" width="50%">
+      <br>
+      <sub>Double-tap sentence translation</sub>
+    </td>
+  </tr>
+</table>
+
+## Translation Backend
+
+Translation uses a DeepSeek OpenAI-compatible endpoint. Configure it in Settings:
+
+- DeepSeek API key
+- Target Wikipedia language, for example `zh`
+- Translation concurrency, clamped to `1..16`
+- Default model: `deepseek-v4-flash`
+
+DeepSeek v4 thinking is disabled for translation requests. The app skips reference-style sections such as References, Further reading, External links, Notes, Footnotes, and Bibliography to avoid unnecessary API spend.
+
+## Download
+
+Signed APKs are published from GitHub Releases. The Android package name is `dev.nihildigit.wikireader.bilingual`, so this fork can be installed beside upstream WikiReader.
+
+## Project Notes
+
+This fork is maintained by NihilDigit and remains GPL-3.0 because the original project is GPL-3.0. WikiReader was originally created by Nishant Mishra. The Kotlin source namespace intentionally stays close to upstream so rebasing from `nsh07/WikiReader` remains practical.
 
 The original upstream README follows.
 

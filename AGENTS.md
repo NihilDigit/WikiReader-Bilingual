@@ -34,25 +34,41 @@ Recent history uses short imperative subjects with optional Conventional Commit 
 
 ## Security & Configuration Tips
 
-Do not commit local signing keys, device-specific files, or generated build outputs. Keep API and networking changes compatible with Wikimedia/Wikipedia endpoints, and avoid storing article or preference data outside the existing Room and preferences layers without documenting the migration path.
+Do not commit `.env`, `release-signing.properties`, `.signing/`, local signing keys, API keys, generated APKs, or device-specific files. Before release commits, scan for `sk-`, `DEEPSEEK_API_KEY`, `ZHIPU_API_KEY`, `OPENAI_API_KEY`, `storePassword`, `keyPassword`, and private-key headers. Keep API and networking changes compatible with Wikimedia/Wikipedia endpoints, and avoid storing article or preference data outside the existing Room and preferences layers without documenting the migration path.
 
 ## Fork Decisions
 
 This fork is named `WikiReader Bilingual`. The installable Android `applicationId` is `dev.nihildigit.wikireader.bilingual`; keep the Kotlin source namespace close to upstream unless a change is required, so upstream rebases stay manageable. The project remains GPL-3.0 because the original repository is GPL-3.0; retain upstream copyright and license notices when distributing modified builds.
 
-For bilingual reading, use an OpenAI-compatible API provider rather than Codex OAuth. The built-in default backend is DeepSeek with `baseUrl = https://api.deepseek.com` and `model = deepseek-v4-flash`; keep base URL, model, target translation language, and API key configurable. Prefer a maintained client library for provider calls instead of hand-written HTTP protocol code. Codex OAuth/private ChatGPT backend routes are intentionally out of scope for this fork.
+For bilingual reading, use DeepSeek's OpenAI-compatible API rather than Codex OAuth. The built-in backend is `baseUrl = https://api.deepseek.com` with `model = deepseek-v4-flash`; keep the DeepSeek API key, target translation language, and concurrency configurable. Prefer maintained client/library helpers where possible, but use a narrow raw request path when provider-specific fields are required. Codex OAuth/private ChatGPT backend routes are intentionally out of scope for this fork.
 
 Machine translation is for Wikipedia content only, not the app framework. Do not translate app chrome such as settings labels, `Featured article`, `Trending articles`, navigation labels, or other first-party UI strings. Article titles should prefer the target-language Wikipedia title from existing langlinks when available; only fall back to model translation when no target-language title exists. Article body paragraphs remain eligible for bilingual source/target rendering.
 
-Current bilingual settings live in the normal Settings screen. Keep defaults aligned with `TranslationConfig`: DeepSeek base URL `https://api.deepseek.com`, model `deepseek-v4-flash`, target language `zh`, `user_id = wikireader-bilingual`, and concurrency `4` clamped to `1..16`. Translation requests should skip references-style sections such as References, Further reading, External links, Notes, Footnotes, and Bibliography.
+Current bilingual behavior:
+
+- Body paragraphs render source text followed by a translation card.
+- When automatic paragraph translation is off, still render the translation card as a centered icon + `Translate` affordance and let the whole card trigger manual translation.
+- Do not blur translations that were manually triggered from the placeholder; automatic paragraph translations may blur by default according to settings.
+- Short article descriptions, section headings, subheadings, image captions, and gallery caption/alt text should render as plain translated text, not blurred cards.
+- Infoboxes should remain owned by the upstream renderer; do not inject translated wikitext into infobox parsing.
+- Short article descriptions need a phrase-preserving prompt with the article title as context. Do not let the model rewrite fragments such as `2025 American horror film by Curry Barker` into full sentences with an added subject.
+- Word explanations should explain the selected word or phrase in the sentence context, in the target language, without dictionary-style headings.
+
+Current bilingual settings live in the normal Settings screen. Keep defaults aligned with `TranslationConfig`: DeepSeek base URL `https://api.deepseek.com`, model `deepseek-v4-flash`, target language `zh`, `user_id = wikireader-bilingual`, and concurrency `8` clamped to `1..16`. DeepSeek v4 requests must disable thinking with `thinking: { "type": "disabled" }`. Translation requests should skip references-style sections such as References, Further reading, External links, Notes, Footnotes, and Bibliography.
 
 Live provider smoke tests are opt-in to protect personal API keys and spend:
 
 ```bash
-DEEPSEEK_API_KEY=... RUN_LIVE_TRANSLATION_SMOKE=true ./gradlew testDebugUnitTest --tests org.nsh07.wikireader.translation.TranslationRepositorySmokeTest.deepSeekProvider_translatesShortText_whenApiKeyProvided
+DEEPSEEK_API_KEY=... RUN_LIVE_TRANSLATION_SMOKE=true ./gradlew testDebugUnitTest --tests org.nsh07.wikireader.translation.TranslationRepositorySmokeTest.configuredProvider_translatesShortText_whenApiKeyProvided
 ```
 
 Keep bilingual translation changes isolated in new provider/repository/UI helpers where possible. Existing upstream files should receive minimal connection edits only, reducing conflicts when syncing with upstream through a normal remote plus rebase workflow.
+
+## README & Metadata
+
+Keep the fork-specific README content above the `The original upstream README follows.` divider and leave the upstream README below that divider intact unless upstream synchronization requires it. Fork screenshots for the README should be captured from the installed release build and stored separately from upstream Fastlane screenshots unless intentionally replacing store metadata.
+
+Store metadata under `fastlane/metadata/android` should identify this fork as `WikiReader Bilingual` for release channels controlled by this repository. The app label must stay `WikiReader Bilingual` in default and Chinese resources so localized devices do not show the upstream app name.
 
 ## Upstream Sync
 

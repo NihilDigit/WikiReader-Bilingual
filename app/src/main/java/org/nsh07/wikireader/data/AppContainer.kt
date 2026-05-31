@@ -84,7 +84,10 @@ class DefaultAppContainer(context: Context) : AppContainer {
     }
 
     override val translationRepository: TranslationRepository by lazy {
-        OpenAiCompatibleTranslationRepository(Dispatchers.IO)
+        OpenAiCompatibleTranslationRepository(
+            ioDispatcher = Dispatchers.IO,
+            translationCacheDao = AppDatabase.getDatabase(context).translationCacheDao()
+        )
     }
 
     override val appPreferencesRepository: AppPreferencesRepository by lazy {

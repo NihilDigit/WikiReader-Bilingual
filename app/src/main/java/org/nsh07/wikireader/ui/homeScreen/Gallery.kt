@@ -26,12 +26,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import org.nsh07.wikireader.R
 import org.nsh07.wikireader.parser.toWikitextAnnotatedString
+import org.nsh07.wikireader.translation.BilingualSectionTranslation
+import org.nsh07.wikireader.translation.BilingualTextKey
+import org.nsh07.wikireader.translation.galleryTextUnits
 import org.nsh07.wikireader.ui.image.FeedImage
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -42,9 +46,17 @@ fun Gallery(
     fontSize: Int,
     background: Boolean,
     onLinkClick: (String) -> Unit,
-    onClick: (String, String) -> Unit
+    onClick: (String, String) -> Unit,
+    sectionIndex: Int,
+    itemIndex: Int,
+    translations: Map<BilingualTextKey, BilingualSectionTranslation>,
+    targetLang: String?,
+    fontFamily: FontFamily,
+    onRetryTranslation: (BilingualTextKey) -> Unit
 ) {
-    val content = remember(text) { text.substringAfter('>').trim(' ', '\n').lines() }
+    val content = remember(text) { text.galleryTextUnits() }
+    if (content.isEmpty()) return
+
     val pagerState = rememberPagerState { content.size }
     val coroutineScope = rememberCoroutineScope()
 
@@ -57,15 +69,15 @@ fun Gallery(
     ) {
         val uriLow = remember(text) {
             "https://$lang.wikipedia.org/wiki/Special:FilePath/${
-                content[it].substringBefore('|')
+                content[it].fileName
             }?width=720"
         }
         val uriHigh = remember(text) {
             "https://$lang.wikipedia.org/wiki/Special:FilePath/${
-                content[it].substringBefore('|')
+                content[it].fileName
             }"
         }
-        val description = remember(text) { content[it].substringAfter('|') }
+        val description = remember(text) { content[it].visibleCaption }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
@@ -94,6 +106,18 @@ fun Gallery(
                 color = colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(8.dp)
             )
+            val key = BilingualTextKey(sectionIndex, itemIndex, it)
+            if (content[it].translationSource.isNotBlank()) {
+                PlainBilingualTranslationText(
+                    translation = translations[key],
+                    targetLang = targetLang,
+                    fontSize = fontSize - 2,
+                    fontFamily = fontFamily,
+                    onRetry = { onRetryTranslation(key) },
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
         }
     }
     Box(

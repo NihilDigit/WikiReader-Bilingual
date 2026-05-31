@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
@@ -40,6 +41,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
 import org.nsh07.wikireader.R
 import org.nsh07.wikireader.translation.BilingualSectionTranslation
+import org.nsh07.wikireader.translation.BilingualTextKey
+import org.nsh07.wikireader.translation.BilingualTextKeys
 import org.nsh07.wikireader.ui.theme.WRShapeDefaults.cardShape
 import org.nsh07.wikireader.ui.theme.WikiReaderTheme
 
@@ -57,8 +60,13 @@ fun ExpandableSection(
     darkTheme: Boolean,
     dataSaver: Boolean,
     imageBackground: Boolean,
-    translation: BilingualSectionTranslation? = null,
+    sectionIndex: Int,
+    translations: Map<BilingualTextKey, BilingualSectionTranslation>,
     targetLang: String? = null,
+    blurParagraphTranslations: Boolean = true,
+    autoTranslateParagraphs: Boolean = true,
+    onRetryTranslation: (BilingualTextKey) -> Unit,
+    onExplainText: (String, String, String) -> Unit,
     modifier: Modifier = Modifier,
     onLinkClick: (String) -> Unit,
     onGalleryImageClick: (String, String) -> Unit,
@@ -96,22 +104,34 @@ fun ExpandableSection(
                     }
             )
 
-            Text(
-                text = remember {
-                    var out = ""
-                    title.fastForEach {
-                        out += it
-                    }
-                    out.replace("<.+>".toRegex(), "")
-                },
-                style = MaterialTheme.typography.headlineMediumEmphasized,
-                fontFamily = FontFamily.Serif,
-                fontSize = (28 * (fontSize / 16.0)).toInt().sp,
-                lineHeight = (36 * (fontSize / 16.0)).toInt().sp,
+            val headingKey = BilingualTextKeys.sectionHeading(sectionIndex)
+            Column(
                 modifier = Modifier
                     .weight(1f)
                     .padding(top = 16.dp, bottom = 16.dp, end = 16.dp)
-            )
+            ) {
+                Text(
+                    text = remember {
+                        var out = ""
+                        title.fastForEach {
+                            out += it
+                        }
+                        out.replace("<.+>".toRegex(), "")
+                    },
+                    style = MaterialTheme.typography.headlineMediumEmphasized,
+                    fontFamily = FontFamily.Serif,
+                    fontSize = (28 * (fontSize / 16.0)).toInt().sp,
+                    lineHeight = (36 * (fontSize / 16.0)).toInt().sp
+                )
+                PlainBilingualTranslationText(
+                    translation = translations[headingKey],
+                    targetLang = targetLang,
+                    fontSize = (fontSize * 0.9).toInt(),
+                    fontFamily = FontFamily.Serif,
+                    onRetry = { onRetryTranslation(headingKey) },
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
         }
 
         AnimatedVisibility(
@@ -119,7 +139,7 @@ fun ExpandableSection(
             enter = expandVertically(expandFrom = Alignment.CenterVertically) + fadeIn(),
             exit = shrinkVertically(shrinkTowards = Alignment.CenterVertically) + fadeOut()
         ) {
-            androidx.compose.foundation.layout.Column {
+            Column {
                 ParsedBodyText(
                     body = body,
                     lang = lang,
@@ -132,13 +152,14 @@ fun ExpandableSection(
                     background = imageBackground,
                     onLinkClick = onLinkClick,
                     onGalleryImageClick = onGalleryImageClick,
-                    showRef = showRef
-                )
-                BilingualTranslationBlock(
-                    translation = translation,
+                    showRef = showRef,
+                    sectionIndex = sectionIndex,
+                    translations = translations,
                     targetLang = targetLang,
-                    fontSize = fontSize,
-                    fontFamily = fontFamily
+                    onRetryTranslation = onRetryTranslation,
+                    onExplainText = onExplainText,
+                    blurParagraphTranslations = blurParagraphTranslations,
+                    autoTranslateParagraphs = autoTranslateParagraphs
                 )
             }
         }
@@ -163,6 +184,10 @@ fun ExpandableSectionPreview() {
                 darkTheme = false,
                 dataSaver = false,
                 imageBackground = false,
+                sectionIndex = 0,
+                translations = emptyMap(),
+                onRetryTranslation = {},
+                onExplainText = { _, _, _ -> },
                 onLinkClick = {},
                 onGalleryImageClick = { _, _ -> },
                 showRef = {}

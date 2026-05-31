@@ -108,6 +108,14 @@ android {
             )
         }
     }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            isUniversalApk = false
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -169,9 +177,10 @@ dependencies {
     implementation(libs.coil3.network.okhttp)
     implementation(libs.ehsannarmani.compose.charts)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.ktor.client.cio)
     implementation(libs.material.kolor)
     implementation(libs.okhttp)
-    implementation(libs.openai.java)
+    implementation(libs.openai.client)
     implementation(libs.retrofit2.converter.scalars)
     implementation(libs.retrofit2.kotlinx.serialization.converter)
     implementation(libs.retrofit2.retrofit)
