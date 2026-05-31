@@ -29,37 +29,13 @@ The app translates Wikipedia content, not the app chrome. Labels such as `Featur
 
 ## Screenshots
 
-<table>
-  <tr>
-    <td align="center" width="33%">
-      <img src="https://github.com/user-attachments/assets/9d073c6d-4707-4031-962a-679eabc9983d" alt="Article title and description translated into Chinese" width="100%">
-      <br>
-      <sub>Translated title and short description</sub>
-    </td>
-    <td align="center" width="33%">
-      <img src="https://github.com/user-attachments/assets/d408dcb8-cc72-4e70-9d2a-f00f76439da2" alt="Paragraph translation under the original Wikipedia text" width="100%">
-      <br>
-      <sub>Paragraph translation</sub>
-    </td>
-    <td align="center" width="33%">
-      <img src="https://github.com/user-attachments/assets/27c54d22-84d4-41b3-abf5-7932f83171db" alt="Bilingual reading settings with API key, target language, blur, auto translation, and concurrency controls" width="100%">
-      <br>
-      <sub>Bilingual settings</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%" colspan="1">
-      <img src="https://github.com/user-attachments/assets/5f8aec3e-2cdd-4211-8339-11c285bced6e" alt="Contextual word explanation in Chinese" width="100%">
-      <br>
-      <sub>Contextual word explanation</sub>
-    </td>
-    <td align="center" width="50%" colspan="2">
-      <img src="https://github.com/user-attachments/assets/201922e7-59a1-4f58-929f-01b675476601" alt="Double-tap sentence translation dialog" width="50%">
-      <br>
-      <sub>Double-tap sentence translation</sub>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/9d073c6d-4707-4031-962a-679eabc9983d" alt="Article title and description translated into Chinese" width="19%">
+  <img src="https://github.com/user-attachments/assets/d408dcb8-cc72-4e70-9d2a-f00f76439da2" alt="Paragraph translation under the original Wikipedia text" width="19%">
+  <img src="https://github.com/user-attachments/assets/5f8aec3e-2cdd-4211-8339-11c285bced6e" alt="Contextual word explanation in Chinese" width="19%">
+  <img src="https://github.com/user-attachments/assets/201922e7-59a1-4f58-929f-01b675476601" alt="Double-tap sentence translation dialog" width="19%">
+  <img src="https://github.com/user-attachments/assets/27c54d22-84d4-41b3-abf5-7932f83171db" alt="Bilingual reading settings with API key, target language, blur, auto translation, and concurrency controls" width="19%">
+</p>
 
 ## Translation Backend
 
